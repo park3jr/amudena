@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>아무데나</title>
+
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+    <!-- 앱 상단 헤더 -->
+    <div class="app-header">
+        <div class="app-title">
+            <div class="app-name">아~무~데~나</div>
+        </div>
+
+        <button id="loginBtn" class="login-icon" title="Google 로그인">
+            👤
+        </button>
+
+        <div id="userInfo" class="user-info" style="display:none;">
+            <div id="userName" class="user-name"></div>
+            <button id="logoutBtn" class="logout-btn">로그아웃</button>
+        </div>
+    </div>
+
+    <!-- 랜덤 탭 -->
+    <div id="randomPage" class="tab-page active">
+        <div class="card">
+
+            <div class="filter-row">
+
+                <div class="filter-label">📍 지역</div>
+
+                <select id="region" onchange="onRegionChanged()">
+                    <option value="metro">수도권</option>
+                    <option value="busan">부산</option>
+                    <option value="daegu">대구</option>
+                    <option value="daejeon">대전</option>
+                    <option value="gwangju">광주</option>
+                </select>
+
+                <label class="line-lock-check">
+                    <input type="checkbox" id="lineLockYn" onchange="toggleLineLock()">
+                    고정
+                </label>
+
+                <select id="lineSelect" onchange="resetRandomResult()" disabled>
+                    <option value="">호선</option>
+                </select>
+
+            </div>
+
+            <button class="button" onclick="drawStation()">
+                🎲 아무데나 가기
+            </button>
+
+            <button class="button" onclick="selectRegionByLocation()" style="display:none;">
+                📍 현재 위치로 지역 선택
+            </button>
+
+        </div>
+
+        <div class="result-card" id="resultBox" style="display:none;">
+            <div class="result-path">
+                <span id="regionResult">-</span>
+                <span>›</span>
+                <span id="lineResult">-</span>
+                <span>›</span>
+                <span id="stationIndex">-</span>
+            </div>
+
+            <div class="result-station">
+                <span id="stationResult">-</span>역
+            </div>
+        </div>
+
+        <div class="save-area" id="saveArea" style="display:none;">
+            <button class="action-chip" onclick="saveHistory()">
+                <span class="icon">📍</span>
+                방문기록 저장
+            </button>
+            <button class="action-chip" onclick="searchPlace('맛집')">
+                <span class="icon">🍽️</span>
+                맛집 찾기
+            </button>
+            <button class="action-chip" onclick="searchPlace('카페')">
+                <span class="icon">☕</span>
+                카페 찾기
+            </button>
+            <button class="action-chip" onclick="searchPlace('가볼만한곳')">
+                <span class="icon">🎡</span>
+                놀거리 찾기
+            </button>
+        </div>
+
+        <div class="card" id="mapCard" style="display:none;">
+            <div class="label">지도</div>
+            <div id="map" style="width:100%;height:300px;border-radius:14px;"></div>
+        </div>
+    </div>
+
+    <!-- 방문기록 탭 -->
+    <div id="historyPage" class="tab-page">
+        <div class="card">
+            <div class="label">방문기록</div>
+            <div id="historyList">기록이 없습니다.</div>
+        </div>
+    </div>
+
+    <!-- 설정 탭 -->
+    <div id="settingPage" class="tab-page">
+
+        <div class="adventure-card" id="adventureCard">
+            <div class="adventure-medal" id="adventureMedal">🏅</div>
+
+            <div class="adventure-content">
+                <div class="adventure-label">나의 방문 등급</div>
+                <div class="adventure-title" id="adventureTitle">초급 모험가</div>
+
+                <div class="adventure-stat-row">
+                    <div class="adventure-stat-box">
+                        <span class="stat-icon">🚇</span>
+                        <div>
+                            <div class="stat-title">방문 완료</div>
+                            <div class="stat-value"><span id="adventureCount">0</span>개</div>
+                        </div>
+                    </div>
+
+                    <!-- <div class="adventure-stat-box">
+                        <span class="stat-icon">🌎</span>
+                        <div>
+                            <div class="stat-title">지역 정복</div>
+                            <div class="stat-value"><span id="regionClearCount">0</span>개</div>
+                        </div>
+                    </div> -->
+                </div>
+
+                <div class="adventure-message" id="adventureMessage">
+                    첫 방문 완료를 기다리고 있어요.
+                </div>
+
+                <div class="adventure-progress-row">
+                    <div class="adventure-progress">
+                        <div class="adventure-progress-bar" id="adventureProgressBar"></div>
+                    </div>
+                    <div class="adventure-progress-text" id="adventureProgressText">0 / 20</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card region-achievement-card">
+            <div class="label">🌎 지역별 업적</div>
+            <div id="regionAchievementList" class="region-achievement-list"></div>
+        </div>
+
+        <!-- <div class="card">
+            <div class="label">스탬프 현황</div>
+
+            <div class="stamp-summary">
+
+                <div class="summary-box">
+                    <div class="summary-title">방문 완료</div>
+                    <div class="summary-value" id="stampedCount">0</div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title">전체 기록</div>
+                    <div class="summary-value" id="totalCount">0</div>
+                </div>
+            </div>
+        </div> -->
+
+        <button class="button" onclick="showVisitedMap()">
+            🗺️ 방문지도 보기
+        </button>
+
+        <div id="visitedMap" style="width:100%;height:320px;border-radius:14px;margin-top:12px;display:none;"></div>
+    </div>
+</div>
+
+<!-- 하단 탭바 -->
+<nav class="bottom-nav">
+    <button class="tab bottom-tab active" onclick="changeTab('random', this)">
+        <span class="tab-icon">🎲</span>
+        <span>랜덤</span>
+    </button>
+    <button class="tab bottom-tab" onclick="changeTab('history', this)">
+        <span class="tab-icon">📍</span>
+        <span>방문기록</span>
+    </button>
+    <button class="tab bottom-tab" onclick="changeTab('setting', this)">
+        <span class="tab-icon">⚙️</span>
+        <span>설정</span>
+    </button>
+</nav>
+
+<!-- 커스텀 confirm -->
+<div id="confirmModal" class="confirm-modal">
+    <div class="confirm-box">
+        <div class="confirm-title" id="confirmTitle">확인</div>
+        <div class="confirm-message" id="confirmMessage">삭제하시겠습니까?</div>
+
+        <div class="confirm-buttons">
+            <button class="confirm-cancel" onclick="closeConfirm()">취소</button>
+            <button class="confirm-ok" id="confirmOkBtn" onclick="runConfirm()">확인</button>
+        </div>
+    </div>
+</div>
+
+<!-- 토스트 메시지 -->
+<div id="toast"></div>
+
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=2ba2bf63d2400e815b132919f06d55fe&libraries=services"></script>
+
+<script type="module">
+/*
+    Firebase Google 로그인 처리 영역
+    - type="module" 안에서 Firebase SDK를 import한다.
+    - 일반 함수들과 충돌하지 않도록 로그인 관련 코드만 여기서 관리한다.
+*/
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signOut,
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDcFHogdIhpiTopWNuKPg_BjPOrE0ZpZHw",
+    authDomain: "compensation-cf2f8.firebaseapp.com",
+    databaseURL: "https://compensation-cf2f8.firebaseio.com",
+    projectId: "compensation-cf2f8",
+    storageBucket: "compensation-cf2f8.firebasestorage.app",
+    messagingSenderId: "1075779261298",
+    appId: "1:1075779261298:web:b203b15ae60abad87103eb"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const userInfo = document.getElementById("userInfo");
+const userName = document.getElementById("userName");
+
+// Google 로그인 팝업을 실행한다.
+loginBtn.addEventListener("click", function(){
+    signInWithPopup(auth, provider)
+        .catch(function(error){
+            console.log(error);
+            showToast("로그인 실패");
+        });
+});
+
+// 로그아웃을 실행한다.
+logoutBtn.addEventListener("click", function(){
+    signOut(auth);
+});
+
+// 로그인 상태가 바뀔 때 UI를 갱신한다.
+onAuthStateChanged(auth, function(user){
+    if(user){
+        loginBtn.style.display = "none";
+        userInfo.style.display = "flex";
+        userName.innerText = user.displayName + "님";
+    }else{
+        loginBtn.style.display = "block";
+        userInfo.style.display = "none";
+        userName.innerText = "";
+    }
+});
+</script>
+
+<script>
+/* =========================
+   전역 상태값
+========================= */
+let subwayData = null;              // subway.json 전체 데이터
+let selectedStation = "";           // 현재 뽑힌 역명
+let map = null;                     // 랜덤 결과 지도 객체
+let marker = null;                  // 랜덤 결과 마커 객체
+let currentResult = null;           // 현재 뽑힌 목적지 정보
+let selectedStationPosition = null; // 현재 뽑힌 역 좌표
+let visitedMap = null;              // 방문지도 지도 객체
+let visitedMarkers = [];            // 방문지도 마커 목록
+let confirmCallback = null;         // 커스텀 confirm 확인 콜백
+
+/* 앱 시작 시 지하철 데이터와 방문기록을 불러온다. */
+loadSubwayData();
+loadHistory();
+updateStampSummary();
+
+/*
+    subway.json 파일을 읽어와 subwayData에 저장한다.
+    데이터 로딩 후 현재 선택된 지역의 호선 목록도 같이 생성한다.
+*/
+async function loadSubwayData() {
+    
+    try{
+        const response = await fetch('./subway.json');
+        subwayData = await response.json();
+        loadLineOptions();
+        updateStampSummary();
+    }catch(e){
+        console.log(e);
+        showToast("지하철 데이터를 불러오지 못했습니다.");
+    }
+}
+
+/*
+    지역 select가 변경됐을 때 실행된다.
+    랜덤 결과를 초기화하고, 호선 고정용 호선 목록을 새 지역 기준으로 다시 만든다.
+*/
+function onRegionChanged(){
+    resetRandomResult();
+    loadLineOptions();
+}
+
+/*
+    현재 선택된 지역에 해당하는 호선 목록을 lineSelect에 채운다.
+    호선 고정 체크 여부와 관계없이 목록은 항상 최신 상태로 유지한다.
+*/
+function loadLineOptions(){
+
+    const lineSelect = document.getElementById("lineSelect");
+
+    lineSelect.innerHTML = `<option value="">호선 선택</option>`;
+
+    if(subwayData === null){
+        return;
+    }
+
+    const regionKey = document.getElementById("region").value;
+    const regionData = subwayData.regions[regionKey];
+
+    if(!regionData || !regionData.lines){
+        return;
+    }
+
+    regionData.lines.forEach(function(line, index){
+        lineSelect.innerHTML += `
+            <option value="${index}">
+                ${line.name}
+            </option>
+        `;
+    });
+}
+
+/*
+    호선 고정 체크박스를 켜거나 끌 때 실행된다.
+    체크 시 호선 선택 select를 활성화하고, 해제 시 비활성화한다.
+*/
+function toggleLineLock(){
+
+    const checked = document.getElementById("lineLockYn").checked;
+    const lineSelect = document.getElementById("lineSelect");
+
+    lineSelect.disabled = !checked;
+
+    if(!checked){
+        lineSelect.value = "";
+    }
+
+    resetRandomResult();
+    loadLineOptions();
+}
+
+/*
+    호선 고정 여부에 따라 랜덤 대상 호선을 반환한다.
+    - 호선 고정 ON: 사용자가 선택한 호선 반환
+    - 호선 고정 OFF: 지역 내 전체 호선 중 랜덤 반환
+*/
+function getSelectedLine(lines){
+
+    const lineLockYn = document.getElementById("lineLockYn").checked;
+    const lineSelect = document.getElementById("lineSelect");
+
+    if(lineLockYn){
+
+        if(lineSelect.value === ""){
+            showToast("호선을 선택해주세요.");
+            return null;
+        }
+
+        return lines[Number(lineSelect.value)];
+    }
+
+    return lines[
+        Math.floor(Math.random() * lines.length)
+    ];
+}
+
+/*
+    랜덤 목적지를 뽑는다.
+    방문기록에 저장된 역은 제외하고, 호선 고정이 켜져 있으면 선택된 호선 안에서만 뽑는다.
+*/
+function drawStation(){
+
+    if(subwayData === null){
+        showToast("지하철 데이터를 불러오는 중입니다.");
+        return;
+    }
+
+    const regionKey = document.getElementById("region").value;
+    const regionData = subwayData.regions[regionKey];
+
+    if(!regionData){
+        showToast("선택한 지역 데이터가 없습니다.");
+        return;
+    }
+
+    const regionName = regionData.name;
+    const lines = regionData.lines;
+    const randomLine = getSelectedLine(lines);
+
+    if(randomLine === null){
+        return;
+    }
+
+    let savedHistory = [];
+
+    try{
+        savedHistory = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        savedHistory = [];
+    }
+
+    const savedStations = savedHistory.map(item => item.station);
+
+    const availableStations = randomLine.stations.filter(station =>
+        !savedStations.includes(station)
+    );
+
+    if(availableStations.length === 0){
+        showToast("이 호선의 역은 모두 저장된 기록에 있습니다.");
+        return;
+    }
+
+    const randomIndex = Math.floor(
+        Math.random() * availableStations.length
+    );
+
+    const stationName = availableStations[randomIndex];
+    const originalIndex = randomLine.stations.indexOf(stationName);
+
+    selectedStation = stationName;
+
+    document.getElementById("regionResult").innerText = regionName;
+    document.getElementById("lineResult").innerText = randomLine.name;
+    document.getElementById("stationIndex").innerText = (originalIndex + 1) + "번째";
+    document.getElementById("stationResult").innerText = stationName;
+    document.getElementById("resultBox").style.display = "block";
+
+    document.getElementById("saveArea").style.display =
+        isSavedStation(stationName) ? "none" : "grid";
+
+    selectedStationPosition = null;
+
+    currentResult = {
+        region: regionName,
+        line: randomLine.name,
+        order: (originalIndex + 1) + "번째",
+        station: stationName,
+        date: new Date().toLocaleString(),
+        lat: null,
+        lng: null,
+        stamped: false,
+        stampedDate: null
+    };
+
+    showMap(stationName + "역");
+}
+
+/*
+    현재 뽑힌 목적지를 방문기록에 저장한다.
+    아직 스탬프를 찍지 않은 기록이 있으면 새 기록 저장을 막는다.
+*/
+function saveHistory(){
+
+    if(currentResult == null){
+        showToast("먼저 목적지를 뽑아주세요.");
+        return;
+    }
+
+    if(currentResult.lat === null || currentResult.lng === null){
+        showToast("역 위치 정보를 불러오는 중입니다.");
+        return;
+    }
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    if(!Array.isArray(history)){
+        history = [];
+    }
+
+    const unstampedExists = history.some(item =>
+        item && item.stamped === false
+    );
+
+    if(unstampedExists){
+        showToast("아직 방문 스탬프를 찍지 않은 기록이 있습니다.");
+        return;
+    }
+
+    const exists = history.some(item =>
+        item && item.station === currentResult.station
+    );
+
+    if(exists){
+        showToast("이미 저장된 목적지입니다.");
+        return;
+    }
+
+    const saveItem = {
+        ...currentResult,
+        stamped: false,
+        stampedDate: null
+    };
+
+    history.unshift(saveItem);
+
+    localStorage.setItem(
+        "amudenaHistory",
+        JSON.stringify(history)
+    );
+
+    showToast("방문기록 저장 완료");
+
+    loadHistory();
+    updateStampSummary();
+}
+
+/*
+    localStorage의 방문기록을 읽어 방문기록 탭에 카드 형태로 렌더링한다.
+    방문 완료 카드에는 삭제 버튼을 보여주지 않는다.
+*/
+function loadHistory(){
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    const historyList = document.getElementById("historyList");
+
+    if(history.length === 0){
+        historyList.innerHTML = "저장된 기록이 없습니다.";
+        return;
+    }
+
+    let html = "";
+
+    history.forEach((item, idx)=>{
+
+        const deletableClass = item.stamped ? "" : "has-delete";
+
+        html += `
+        <div class="history-card ${deletableClass}">
+            ${!item.stamped ? `
+                <button
+                    class="delete-btn"
+                    onclick="deleteHistory(${idx})">
+                    ✕
+                </button>
+            ` : ``}
+
+            <div class="history-info">
+                ${item.region} > ${item.line} > ${item.order}
+            </div>
+
+            <div class="history-station">
+                🚆 ${item.station}역
+            </div>
+
+            <div class="history-date">
+                저장일 : ${item.date}
+            </div>
+
+            ${item.stamped ? `
+                <button class="stamp-btn done" disabled>
+                    ✅ 방문 완료 ${item.stampedDate ? item.stampedDate : ""}
+                </button>
+            ` : `
+                <button
+                    class="stamp-btn"
+                    id="stampBtn_${idx}"
+                    onclick="stampHistory(${idx})"
+                    disabled>
+                    위치 확인 중...
+                </button>
+            `}
+        </div>
+        `;
+    });
+
+    historyList.innerHTML = html;
+    updateStampButtons();
+}
+
+/*
+    미방문 방문기록을 삭제한다.
+    커스텀 confirm 모달에서 확인을 누르면 실제 삭제가 진행된다.
+*/
+function deleteHistory(index){
+
+    showConfirm(
+        "삭제하시겠습니까?",
+        function(){
+
+            let history = [];
+
+            try{
+                history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+            }catch(e){
+                history = [];
+            }
+
+            history.splice(index, 1);
+
+            localStorage.setItem(
+                "amudenaHistory",
+                JSON.stringify(history)
+            );
+
+            loadHistory();
+            updateStampSummary();
+        }
+    );
+}
+
+/*
+    방문기록 전체를 초기화한다.
+    현재 화면에서는 전체 삭제 버튼을 숨겨두었지만, 추후 설정 탭에서 연결할 수 있다.
+*/
+function clearHistory(){
+
+    showConfirm(
+        "전체 방문기록을 삭제하시겠습니까?",
+        function(){
+            localStorage.removeItem("amudenaHistory");
+            loadHistory();
+            updateStampSummary();
+        }
+    );
+}
+
+/*
+    카카오 장소 검색으로 역 좌표를 찾고, 랜덤 결과 지도에 마커를 표시한다.
+    찾은 좌표는 currentResult에도 저장해서 방문기록 저장 시 같이 보관한다.
+*/
+function showMap(stationName){
+
+    document.getElementById("mapCard").style.display = "block";
+
+    const mapContainer = document.getElementById("map");
+    const ps = new kakao.maps.services.Places();
+
+    ps.keywordSearch(stationName, function(data, status){
+
+        if(status !== kakao.maps.services.Status.OK){
+            showToast("역 위치를 찾지 못했습니다.");
+            return;
+        }
+
+        const place = data[0];
+        const position = new kakao.maps.LatLng(place.y, place.x);
+
+        selectedStationPosition = {
+            lat: Number(place.y),
+            lng: Number(place.x)
+        };
+
+        if(currentResult !== null){
+            currentResult.lat = selectedStationPosition.lat;
+            currentResult.lng = selectedStationPosition.lng;
+        }
+
+        if(map === null){
+            map = new kakao.maps.Map(mapContainer, {
+                center: position,
+                level: 4
+            });
+        }else{
+            map.setCenter(position);
+        }
+
+        if(marker !== null){
+            marker.setMap(null);
+        }
+
+        marker = new kakao.maps.Marker({
+            position: position
+        });
+
+        marker.setMap(map);
+    });
+}
+
+/*
+    현재 뽑힌 역을 카카오맵 검색 화면으로 연다.
+    현재 UI에서는 직접 버튼으로 쓰지 않지만, 추후 길찾기 버튼에 연결할 수 있다.
+*/
+function openMap(){
+
+    if(selectedStation === ""){
+        showToast("먼저 목적지를 뽑아주세요.");
+        return;
+    }
+
+    window.open(
+        "https://map.kakao.com/link/search/" + encodeURIComponent(selectedStation + "역"),
+        "_blank"
+    );
+}
+
+/*
+    하단 탭을 전환한다.
+    방문기록 탭을 누를 때마다 위치 확인을 다시 실행한다.
+    설정 탭을 누르면 스탬프 통계를 갱신한다.
+*/
+function changeTab(tabName, btn){
+
+    document.querySelectorAll(".tab").forEach(function(tab){
+        tab.classList.remove("active");
+    });
+
+    btn.classList.add("active");
+
+    document.querySelectorAll(".tab-page").forEach(function(page){
+        page.classList.remove("active");
+    });
+
+    document.getElementById(tabName + "Page").classList.add("active");
+
+    if(tabName === "history"){
+        loadHistory();
+    }
+
+    if(tabName === "setting"){
+        updateStampSummary();
+    }
+}
+
+/*
+    랜덤 결과 화면을 초기화한다.
+    지역 또는 호선 조건이 바뀔 때 기존 결과가 남지 않도록 정리한다.
+*/
+function resetRandomResult(){
+
+    selectedStation = "";
+    currentResult = null;
+    selectedStationPosition = null;
+
+    document.getElementById("resultBox").style.display = "none";
+    document.getElementById("saveArea").style.display = "none";
+    document.getElementById("mapCard").style.display = "none";
+
+    document.getElementById("regionResult").innerText = "-";
+    document.getElementById("lineResult").innerText = "-";
+    document.getElementById("stationIndex").innerText = "-";
+    document.getElementById("stationResult").innerText = "-";
+
+    if(marker !== null){
+        marker.setMap(null);
+        marker = null;
+    }
+
+    map = null;
+}
+
+/*
+    특정 역이 이미 방문기록에 저장되어 있는지 확인한다.
+*/
+function isSavedStation(stationName){
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    return history.some(item =>
+        item && item.station === stationName
+    );
+}
+
+/*
+    현재 GPS 위치를 기준으로 지역 select 값을 자동 선택한다.
+    현재는 버튼이 숨겨져 있지만, 필요 시 버튼을 노출하면 사용할 수 있다.
+*/
+function selectRegionByLocation(){
+
+    if(!navigator.geolocation){
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        function(position){
+
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const regionKey = getRegionByLatLng(lat, lng);
+
+            if(regionKey === null){
+                return;
+            }
+
+            document.getElementById("region").value = regionKey;
+            onRegionChanged();
+        },
+        function(error){
+            console.log(error);
+        },
+        {
+            enableHighAccuracy: false,
+            timeout: 3000,
+            maximumAge: 600000
+        }
+    );
+}
+
+/*
+    위도/경도 값을 보고 지원 지역 키를 반환한다.
+    현재는 대략적인 박스 범위로 수도권/부산/대구/대전/광주를 구분한다.
+*/
+function getRegionByLatLng(lat, lng){
+
+    if(lat >= 37.0 && lat <= 38.3 && lng >= 126.0 && lng <= 128.0){
+        return "metro";
+    }
+
+    if(lat >= 35.0 && lat <= 35.4 && lng >= 128.8 && lng <= 129.3){
+        return "busan";
+    }
+
+    if(lat >= 35.7 && lat <= 36.0 && lng >= 128.4 && lng <= 128.8){
+        return "daegu";
+    }
+
+    if(lat >= 36.2 && lat <= 36.5 && lng >= 127.2 && lng <= 127.6){
+        return "daejeon";
+    }
+
+    if(lat >= 35.0 && lat <= 35.3 && lng >= 126.7 && lng <= 127.0){
+        return "gwangju";
+    }
+
+    return null;
+}
+
+/*
+    현재 뽑힌 역 기준으로 카카오맵 검색을 연다.
+    맛집/카페/가볼만한곳 버튼에서 공통으로 사용한다.
+*/
+function searchPlace(type){
+
+    if(!selectedStation){
+        showToast("먼저 목적지를 뽑아주세요.");
+        return;
+    }
+
+    window.open(
+        "https://map.kakao.com/link/search/" +
+        encodeURIComponent(selectedStation + "역 " + type),
+        "_blank"
+    );
+}
+
+/*
+    두 좌표 사이의 거리를 미터 단위로 계산한다.
+    방문 스탬프 가능 여부를 판단할 때 사용한다.
+*/
+function getDistanceMeter(lat1, lng1, lat2, lng2){
+
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+}
+
+/*
+    방문기록 탭에 표시된 스탬프 버튼 상태를 갱신한다.
+    현재 위치와 저장된 역 좌표 거리가 150m 이내이면 버튼을 활성화한다.
+*/
+function updateStampButtons(){
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    const needCheck = history.some(item =>
+        item && !item.stamped && item.lat !== null && item.lng !== null
+    );
+
+    if(!needCheck){
+        history.forEach(function(item, idx){
+            const btn = document.getElementById("stampBtn_" + idx);
+            if(btn){
+                btn.disabled = true;
+                btn.innerText = "역 위치 정보 없음";
+            }
+        });
+        return;
+    }
+
+    if(!navigator.geolocation){
+        history.forEach(function(item, idx){
+            const btn = document.getElementById("stampBtn_" + idx);
+            if(btn){
+                btn.disabled = true;
+                btn.innerText = "위치 지원 안됨";
+            }
+        });
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        function(position){
+
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+
+            history.forEach(function(item, idx){
+
+                const btn = document.getElementById("stampBtn_" + idx);
+
+                if(!btn || item.stamped){
+                    return;
+                }
+
+                if(item.lat === null || item.lng === null){
+                    btn.disabled = true;
+                    btn.innerText = "역 위치 정보 없음";
+                    return;
+                }
+
+                const distance = getDistanceMeter(
+                    userLat,
+                    userLng,
+                    item.lat,
+                    item.lng
+                );
+
+                if(distance <= 150000000000){
+                    btn.disabled = false;
+                    btn.classList.add("ready");
+                    btn.innerText = "🎉 방문 스탬프 찍기";
+                }else{
+                    btn.disabled = true;
+                    btn.classList.remove("ready");
+                    btn.innerText = "역에서 150m 이내로 이동해주세요. (" + Math.round(distance) + "m)";
+                }
+            });
+        },
+        function(error){
+            console.log(error);
+
+            history.forEach(function(item, idx){
+                const btn = document.getElementById("stampBtn_" + idx);
+                if(btn){
+                    btn.disabled = true;
+                    btn.innerText = "위치 권한 필요";
+                }
+            });
+        },
+        {
+            enableHighAccuracy:false,
+            timeout:5000,
+            maximumAge:30000
+        }
+    );
+}
+
+/*
+    방문기록의 특정 항목을 방문 완료 상태로 변경한다.
+    스탬프 날짜를 저장하고 방문기록/통계를 다시 갱신한다.
+*/
+function stampHistory(index){
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    if(!history[index]){
+        return;
+    }
+
+    history[index].stamped = true;
+    history[index].stampedDate = new Date().toLocaleString();
+
+    localStorage.setItem(
+        "amudenaHistory",
+        JSON.stringify(history)
+    );
+
+    showToast("🎉 " + history[index].station + "역 방문 스탬프 완료!");
+
+    loadHistory();
+    updateStampSummary();
+}
+
+
+/*
+    지역별 방문 완료 개수 기준으로 지역 업적 등급을 반환한다.
+*/
+function getRegionRank(count){
+
+    if(count >= 101){
+        return { medal:"👑", title:"마스터", max:null };
+    }
+
+    if(count >= 61){
+        return { medal:"🥇", title:"정복자", max:100 };
+    }
+
+    if(count >= 31){
+        return { medal:"🥈", title:"개척자", max:60 };
+    }
+
+    if(count >= 11){
+        return { medal:"🥉", title:"탐험가", max:30 };
+    }
+
+    if(count >= 1){
+        return { medal:"🏅", title:"입문자", max:10 };
+    }
+
+    return { medal:"🔒", title:"미방문", max:1 };
+}
+
+/*
+    설정 탭의 지역별 업적 목록을 렌더링한다.
+*/
+function renderRegionAchievements(history){
+
+    const regionAchievementList = document.getElementById("regionAchievementList");
+
+    if(!regionAchievementList){
+        return;
+    }
+
+    const regionBaseList = [
+        { key:"수도권", icon:"🏙️" },
+        { key:"부산", icon:"🌊" },
+        { key:"대구", icon:"🌳" },
+        { key:"대전", icon:"🧪" },
+        { key:"광주", icon:"🌸" }
+    ];
+
+    const stampedHistory = history.filter(item =>
+        item && item.stamped === true
+    );
+
+    let html = "";
+
+    regionBaseList.forEach(function(region){
+
+        const count = stampedHistory.filter(item =>
+            item.region === region.key
+        ).length;
+
+        const totalStationCount = getTotalStationCountByRegion(region.key);
+        const percent = totalStationCount === 0
+            ? 0
+            : Math.round((count / totalStationCount) * 100);
+
+        const rank = getRegionPercentRank(percent);
+        const progressText = count + " / " + totalStationCount;
+
+        html += `
+            <div class="region-achievement-item">
+                <div class="region-achievement-main">
+                    <div class="region-achievement-icon">${region.icon}</div>
+                    <div class="region-achievement-info">
+                        <div class="region-achievement-name">${region.key}</div>
+                        <div class="region-achievement-rank">${rank.medal} ${rank.title}</div>
+                    </div>
+                    <div class="region-achievement-count">${count}<small>개</small></div>
+                </div>
+
+                <div class="region-achievement-progress-row">
+                    <div class="region-achievement-progress">
+                        <div class="region-achievement-progress-bar" style="width:${percent}%;"></div>
+                    </div>
+                    <div class="region-achievement-progress-text">${progressText}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    regionAchievementList.innerHTML = html;
+}
+
+/*
+    설정 탭의 스탬프 현황 숫자를 갱신한다.
+    방문 예정/방문 완료/전체 기록 수를 계산한다.
+*/
+function updateStampSummary(){
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    const stampedCount = history.filter(item =>
+        item && item.stamped === true
+    ).length;
+
+    const totalStationCount = getTotalStationCountAll();
+
+    const percent = totalStationCount === 0
+        ? 0
+        : Math.min(100, Math.round((stampedCount / totalStationCount) * 100));
+
+    document.getElementById("adventureCount").innerText = stampedCount;
+
+    document.getElementById("adventureProgressBar").style.width = percent + "%";
+
+    document.getElementById("adventureProgressText").innerText =
+        totalStationCount === 0
+            ? "0 / 0"
+            : stampedCount + " / " + totalStationCount;
+
+    const message = document.getElementById("adventureMessage");
+
+    if(stampedCount === 0){
+        message.innerText = "첫 방문 완료를 기다리고 있어요.";
+    }else{
+        message.innerText = "전체 역 중 " + percent + "% 방문했어요.";
+    }
+
+    renderRegionAchievements(history);
+}
+
+/*
+    방문 완료된 역만 카카오맵에 마커로 표시한다.
+    마커를 클릭하면 역명과 노선 정보가 InfoWindow로 열린다.
+*/
+function showVisitedMap(){
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    const visitedList = history.filter(item =>
+        item &&
+        item.stamped === true &&
+        item.lat !== null &&
+        item.lng !== null
+    );
+
+    if(visitedList.length === 0){
+        showToast("방문 완료된 역이 없습니다.");
+        return;
+    }
+
+    const mapBox = document.getElementById("visitedMap");
+    mapBox.style.display = "block";
+
+    const first = visitedList[0];
+    const center = new kakao.maps.LatLng(first.lat, first.lng);
+
+    if(visitedMap === null){
+        visitedMap = new kakao.maps.Map(mapBox, {
+            center: center,
+            level: 8
+        });
+    }else{
+        visitedMap.setCenter(center);
+    }
+
+    visitedMarkers.forEach(marker => marker.setMap(null));
+    visitedMarkers = [];
+
+    const bounds = new kakao.maps.LatLngBounds();
+
+    visitedList.forEach(item => {
+
+        const position = new kakao.maps.LatLng(item.lat, item.lng);
+
+        const marker = new kakao.maps.Marker({
+            position: position
+        });
+
+        marker.setMap(visitedMap);
+        visitedMarkers.push(marker);
+        bounds.extend(position);
+
+        const infoWindow = new kakao.maps.InfoWindow({
+            content: `
+                <div style="padding:6px 10px;font-size:13px;">
+                    <b>${item.station}역</b><br>
+                    ${item.region} · ${item.line}
+                </div>
+            `
+        });
+
+        kakao.maps.event.addListener(marker, "click", function(){
+            infoWindow.open(visitedMap, marker);
+        });
+    });
+
+    visitedMap.setBounds(bounds);
+}
+
+/*
+    alert 대신 사용하는 토스트 메시지 함수다.
+    지정한 문구를 잠깐 보여주고 자동으로 사라진다.
+*/
+function showToast(message){
+
+    const toast = document.getElementById("toast");
+
+    toast.innerText = message;
+    toast.classList.add("show");
+
+    setTimeout(function(){
+        toast.classList.remove("show");
+    }, 2500);
+}
+
+/*
+    confirm 대신 사용하는 커스텀 확인 모달이다.
+    확인 버튼을 눌렀을 때 실행할 콜백을 저장한다.
+*/
+function showConfirm(message, callback){
+
+    document.getElementById("confirmMessage").innerText = message;
+
+    confirmCallback = callback;
+
+    document
+        .getElementById("confirmModal")
+        .classList
+        .add("show");
+}
+
+/*
+    커스텀 confirm 모달을 닫는다.
+*/
+function closeConfirm(){
+
+    document
+        .getElementById("confirmModal")
+        .classList
+        .remove("show");
+}
+
+/*
+    커스텀 confirm의 확인 버튼을 눌렀을 때 실행된다.
+    저장된 콜백을 실행하고 콜백 값을 초기화한다.
+*/
+function runConfirm(){
+
+    closeConfirm();
+
+    if(confirmCallback){
+        confirmCallback();
+        confirmCallback = null;
+    }
+}
+
+function getTotalStationCountByRegion(regionName){
+
+    if(!subwayData || !subwayData.regions){
+        return 0;
+    }
+
+    let total = 0;
+
+    Object.keys(subwayData.regions).forEach(function(regionKey){
+
+        const regionData = subwayData.regions[regionKey];
+
+        if(regionData.name !== regionName){
+            return;
+        }
+
+        regionData.lines.forEach(function(line){
+            total += line.stations.length;
+        });
+    });
+
+    return total;
+}
+
+function getRegionPercentRank(percent){
+
+    if(percent === 0){
+        return { medal:"🔒", title:"미방문" };
+    }
+
+    if(percent >= 100){
+        return { medal:"👑", title:"완전정복" };
+    }
+
+    if(percent >= 70){
+        return { medal:"🥇", title:"정복자" };
+    }
+
+    if(percent >= 40){
+        return { medal:"🥈", title:"개척자" };
+    }
+
+    if(percent >= 15){
+        return { medal:"🥉", title:"탐험가" };
+    }
+
+    return { medal:"🏅", title:"입문자" };
+}
+
+function getTotalStationCountAll(){
+
+    if(!subwayData || !subwayData.regions){
+        return 0;
+    }
+
+    let total = 0;
+
+    Object.keys(subwayData.regions).forEach(function(regionKey){
+        const regionData = subwayData.regions[regionKey];
+
+        regionData.lines.forEach(function(line){
+            total += line.stations.length;
+        });
+    });
+
+    return total;
+}
+</script>
+</body>
+</html>
