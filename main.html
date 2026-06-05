@@ -6,12 +6,6 @@
 
 <title>아무데나</title>
 
-<style>
-/* =========================
-   공통 초기화
-========================= */
-
-</style>
 <link rel="stylesheet" href="style.css">
 </head>
 
@@ -20,8 +14,13 @@
 <div class="container">
     <!-- 앱 상단 헤더 -->
     <div class="app-header">
-        <div class="app-title">
+        <div class="header-left">
             <div class="app-name">아~무~데~나</div>
+            <div class="user-level">
+                <span id="headerLevel" class="level"></span>
+                <span id="headerTitle" class="title"></span>
+                <span id="headerCount" class="count"></span>
+            </div>
         </div>
 
         <button id="loginBtn" class="login-icon" title="Google 로그인">
@@ -42,7 +41,7 @@
 
                 <div class="filter-label">📍 지역</div>
 
-                <select id="region" class="native-select">
+                <select id="region" onchange="onRegionChanged()">
                     <option value="metro">수도권</option>
                     <option value="busan">부산</option>
                     <option value="daegu">대구</option>
@@ -50,24 +49,14 @@
                     <option value="gwangju">광주</option>
                 </select>
 
-                <div class="custom-select" id="regionCustom" data-select-id="region">
-                    <button type="button" class="custom-select-button">수도권</button>
-                    <div class="custom-select-options"></div>
-                </div>
-
                 <label class="line-lock-check">
                     <input type="checkbox" id="lineLockYn" onchange="toggleLineLock()">
                     고정
                 </label>
 
-                <select id="lineSelect" class="native-select" disabled>
+                <select id="lineSelect" onchange="resetRandomResult()" disabled>
                     <option value="">호선</option>
                 </select>
-
-                <div class="custom-select disabled" id="lineSelectCustom" data-select-id="lineSelect">
-                    <button type="button" class="custom-select-button">호선</button>
-                    <div class="custom-select-options"></div>
-                </div>
 
             </div>
 
@@ -130,14 +119,54 @@
 
     <!-- 설정 탭 -->
     <div id="settingPage" class="tab-page">
-        <div class="card">
+
+        <div class="adventure-card" id="adventureCard" style="display:none;">
+            <div class="adventure-medal" id="adventureMedal">🏅</div>
+
+            <div class="adventure-content">
+                <div class="adventure-label">나의 방문 등급</div>
+                <div class="adventure-title" id="adventureTitle">초급 모험가</div>
+
+                <div class="adventure-stat-row">
+                    <div class="adventure-stat-box">
+                        <span class="stat-icon">🚇</span>
+                        <div>
+                            <div class="stat-title">방문 완료</div>
+                            <div class="stat-value"><span id="adventureCount">0</span>개</div>
+                        </div>
+                    </div>
+
+                    <!-- <div class="adventure-stat-box">
+                        <span class="stat-icon">🌎</span>
+                        <div>
+                            <div class="stat-title">지역 정복</div>
+                            <div class="stat-value"><span id="regionClearCount">0</span>개</div>
+                        </div>
+                    </div> -->
+                </div>
+
+                <div class="adventure-message" id="adventureMessage">
+                    첫 방문 완료를 기다리고 있어요.
+                </div>
+
+                <div class="adventure-progress-row">
+                    <div class="adventure-progress">
+                        <div class="adventure-progress-bar" id="adventureProgressBar"></div>
+                    </div>
+                    <div class="adventure-progress-text" id="adventureProgressText">0 / 20</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card region-achievement-card">
+            <div class="label">🌎 지역별 업적</div>
+            <div id="regionAchievementList" class="region-achievement-list"></div>
+        </div>
+
+        <!-- <div class="card">
             <div class="label">스탬프 현황</div>
 
             <div class="stamp-summary">
-                <div class="summary-box">
-                    <div class="summary-title">방문 예정</div>
-                    <div class="summary-value" id="pendingCount">0</div>
-                </div>
 
                 <div class="summary-box">
                     <div class="summary-title">방문 완료</div>
@@ -149,7 +178,7 @@
                     <div class="summary-value" id="totalCount">0</div>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <button class="button" onclick="showVisitedMap()">
             🗺️ 방문지도 보기
@@ -200,6 +229,7 @@
     - 일반 함수들과 충돌하지 않도록 로그인 관련 코드만 여기서 관리한다.
 */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
 import {
     getAuth,
     GoogleAuthProvider,
@@ -207,6 +237,16 @@ import {
     signOut,
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    collection,
+    getDocs,
+    deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDcFHogdIhpiTopWNuKPg_BjPOrE0ZpZHw",
@@ -218,9 +258,87 @@ const firebaseConfig = {
     appId: "1:1075779261298:web:b203b15ae60abad87103eb"
 };
 
+async function saveUserDataToCloud(){
+
+    if(!currentUser){
+        return;
+    }
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    await setDoc(doc(db, "users", currentUser.uid), {
+        uid: currentUser.uid,
+        name: currentUser.displayName,
+        email: currentUser.email,
+        updatedAt: new Date().toISOString()
+    }, { merge:true });
+
+    for(const item of history){
+
+        if(!item || !item.station){
+            continue;
+        }
+
+        const historyId = item.station.replace(/[\/.#$\[\]]/g, "_");
+
+        await setDoc(
+            doc(db, "users", currentUser.uid, "histories", historyId),
+            item,
+            { merge:true }
+        );
+    }
+}
+
+async function loadUserDataFromCloud(){
+
+    if(!currentUser){
+        return;
+    }
+
+    const userRef = doc(db, "users", currentUser.uid);
+    const userSnap = await getDoc(userRef);
+
+    if(!userSnap.exists()){
+        await saveUserDataToCloud();
+        return;
+    }
+
+    const historyRef = collection(db, "users", currentUser.uid, "histories");
+    const historySnap = await getDocs(historyRef);
+
+    const history = [];
+
+    historySnap.forEach(function(docSnap){
+        history.push(docSnap.data());
+    });
+
+    console.log("Firestore histories 개수:", historySnap.size);
+    console.log("Firestore histories 데이터:", history);
+
+    history.sort(function(a, b){
+        return String(b.date).localeCompare(String(a.date));
+    });
+
+    localStorage.setItem("amudenaHistory", JSON.stringify(history));
+
+    loadHistory();
+    updateStampSummary();
+}
+
+window.saveUserDataToCloud = saveUserDataToCloud;
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+const db = getFirestore(app);
+
+let currentUser = null;
 
 const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -229,11 +347,36 @@ const userName = document.getElementById("userName");
 
 // Google 로그인 팝업을 실행한다.
 loginBtn.addEventListener("click", function(){
-    signInWithPopup(auth, provider)
-        .catch(function(error){
-            console.log(error);
-            showToast("로그인 실패");
-        });
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    if(history.length > 0){
+
+        const ok = showConfirm(
+            "⚠️ 현재 기기에 저장된 방문기록이 있습니다.\n\n" +
+            "처음 로그인 시 클라우드 데이터와 동기화되며\n" +
+            "기존 로컬 데이터가 변경될 수 있습니다.\n\n" +
+            "계속 로그인하시겠습니까?", 
+            function(){
+                signInWithPopup(auth, provider).catch(function(error){
+                    console.log(error);
+                    showToast("로그인 실패");
+                });
+            }
+        );
+
+        if(!ok){
+            return;
+        }
+    }
+
+    
 });
 
 // 로그아웃을 실행한다.
@@ -242,17 +385,51 @@ logoutBtn.addEventListener("click", function(){
 });
 
 // 로그인 상태가 바뀔 때 UI를 갱신한다.
-onAuthStateChanged(auth, function(user){
+onAuthStateChanged(auth, async function(user){
     if(user){
+        currentUser = user;
+
         loginBtn.style.display = "none";
         userInfo.style.display = "flex";
         userName.innerText = user.displayName + "님";
+
+        await loadUserDataFromCloud();
     }else{
-        loginBtn.style.display = "block";
-        userInfo.style.display = "none";
-        userName.innerText = "";
+        location.href = "index.html";
     }
 });
+
+
+async function deleteUserHistoryFromCloud(stationName){
+
+    if(!currentUser || !stationName){
+        return;
+    }
+
+    const historyId = stationName.replace(/[\/.#$\[\]]/g, "_");
+
+    await deleteDoc(
+        doc(db, "users", currentUser.uid, "histories", historyId)
+    );
+}
+
+window.deleteUserHistoryFromCloud = deleteUserHistoryFromCloud;
+
+async function clearUserHistoryFromCloud(){
+
+    if(!currentUser){
+        return;
+    }
+
+    const historyRef = collection(db, "users", currentUser.uid, "histories");
+    const historySnap = await getDocs(historyRef);
+
+    for(const docSnap of historySnap.docs){
+        await deleteDoc(docSnap.ref);
+    }
+}
+
+window.clearUserHistoryFromCloud = clearUserHistoryFromCloud;
 </script>
 
 <script>
@@ -270,145 +447,21 @@ let visitedMarkers = [];            // 방문지도 마커 목록
 let confirmCallback = null;         // 커스텀 confirm 확인 콜백
 
 /* 앱 시작 시 지하철 데이터와 방문기록을 불러온다. */
-initCustomSelects();
 loadSubwayData();
 loadHistory();
 updateStampSummary();
-
-
-/*
-    커스텀 드롭다운을 초기화한다.
-    실제 값은 숨겨진 select에 저장하고, 화면 버튼/목록만 직접 그린다.
-*/
-function initCustomSelects(){
-
-    document.querySelectorAll(".custom-select").forEach(function(customSelect){
-
-        const selectId = customSelect.dataset.selectId;
-        const nativeSelect = document.getElementById(selectId);
-        const button = customSelect.querySelector(".custom-select-button");
-
-        button.addEventListener("click", function(event){
-            event.stopPropagation();
-
-            if(nativeSelect.disabled){
-                return;
-            }
-
-            document.querySelectorAll(".custom-select.open").forEach(function(openSelect){
-                if(openSelect !== customSelect){
-                    openSelect.classList.remove("open");
-                }
-            });
-
-            customSelect.classList.toggle("open");
-        });
-
-        renderCustomSelectOptions(selectId);
-    });
-
-    document.addEventListener("click", function(){
-        closeAllCustomSelects();
-    });
-}
-
-/*
-    숨겨진 select의 option들을 읽어서 커스텀 옵션 버튼으로 다시 그린다.
-*/
-function renderCustomSelectOptions(selectId){
-
-    const nativeSelect = document.getElementById(selectId);
-    const customSelect = document.querySelector(`[data-select-id="${selectId}"]`);
-
-    if(!nativeSelect || !customSelect){
-        return;
-    }
-
-    const button = customSelect.querySelector(".custom-select-button");
-    const optionBox = customSelect.querySelector(".custom-select-options");
-
-    optionBox.innerHTML = "";
-
-    Array.from(nativeSelect.options).forEach(function(option){
-
-        const optionButton = document.createElement("button");
-        optionButton.type = "button";
-        optionButton.className = "custom-option";
-        optionButton.innerText = option.text.trim();
-        optionButton.disabled = option.disabled;
-
-        if(option.value === nativeSelect.value){
-            optionButton.classList.add("selected");
-            button.innerText = option.text.trim();
-        }
-
-        optionButton.addEventListener("click", function(event){
-            event.stopPropagation();
-
-            if(option.disabled){
-                return;
-            }
-
-            nativeSelect.value = option.value;
-            button.innerText = option.text.trim();
-
-            customSelect
-                .querySelectorAll(".custom-option")
-                .forEach(item => item.classList.remove("selected"));
-
-            optionButton.classList.add("selected");
-            customSelect.classList.remove("open");
-
-            if(selectId === "region"){
-                onRegionChanged();
-            }
-
-            if(selectId === "lineSelect"){
-                resetRandomResult();
-            }
-        });
-
-        optionBox.appendChild(optionButton);
-    });
-
-    syncCustomSelectDisabled(selectId);
-}
-
-/*
-    select의 disabled 상태를 커스텀 UI에도 반영한다.
-*/
-function syncCustomSelectDisabled(selectId){
-
-    const nativeSelect = document.getElementById(selectId);
-    const customSelect = document.querySelector(`[data-select-id="${selectId}"]`);
-
-    if(!nativeSelect || !customSelect){
-        return;
-    }
-
-    customSelect.classList.toggle("disabled", nativeSelect.disabled);
-}
-
-/*
-    열려 있는 모든 커스텀 드롭다운을 닫는다.
-*/
-function closeAllCustomSelects(){
-
-    document.querySelectorAll(".custom-select.open").forEach(function(customSelect){
-        customSelect.classList.remove("open");
-    });
-}
-
 
 /*
     subway.json 파일을 읽어와 subwayData에 저장한다.
     데이터 로딩 후 현재 선택된 지역의 호선 목록도 같이 생성한다.
 */
 async function loadSubwayData() {
+    
     try{
         const response = await fetch('./subway.json');
         subwayData = await response.json();
         loadLineOptions();
+        updateStampSummary();
     }catch(e){
         console.log(e);
         showToast("지하철 데이터를 불러오지 못했습니다.");
@@ -435,7 +488,6 @@ function loadLineOptions(){
     lineSelect.innerHTML = `<option value="">호선 선택</option>`;
 
     if(subwayData === null){
-        renderCustomSelectOptions("lineSelect");
         return;
     }
 
@@ -443,7 +495,6 @@ function loadLineOptions(){
     const regionData = subwayData.regions[regionKey];
 
     if(!regionData || !regionData.lines){
-        renderCustomSelectOptions("lineSelect");
         return;
     }
 
@@ -454,8 +505,6 @@ function loadLineOptions(){
             </option>
         `;
     });
-
-    renderCustomSelectOptions("lineSelect");
 }
 
 /*
@@ -475,7 +524,6 @@ function toggleLineLock(){
 
     resetRandomResult();
     loadLineOptions();
-    syncCustomSelectDisabled("lineSelect");
 }
 
 /*
@@ -643,6 +691,11 @@ function saveHistory(){
         JSON.stringify(history)
     );
 
+
+    if(window.saveUserDataToCloud){
+        window.saveUserDataToCloud();
+    }
+
     showToast("방문기록 저장 완료");
 
     loadHistory();
@@ -737,12 +790,22 @@ function deleteHistory(index){
                 history = [];
             }
 
+            const deletedStation = history[index].station;
+
             history.splice(index, 1);
 
             localStorage.setItem(
                 "amudenaHistory",
                 JSON.stringify(history)
             );
+
+            if(window.deleteUserHistoryFromCloud){
+                window.deleteUserHistoryFromCloud(deletedStation);
+            }
+            
+            if(window.saveUserDataToCloud){
+                window.saveUserDataToCloud();
+            }
 
             loadHistory();
             updateStampSummary();
@@ -760,6 +823,12 @@ function clearHistory(){
         "전체 방문기록을 삭제하시겠습니까?",
         function(){
             localStorage.removeItem("amudenaHistory");
+            if(window.clearUserHistoryFromCloud){
+                window.clearUserHistoryFromCloud();
+            }
+            if(window.saveUserDataToCloud){
+                window.saveUserDataToCloud();
+            }
             loadHistory();
             updateStampSummary();
         }
@@ -930,7 +999,6 @@ function selectRegionByLocation(){
             }
 
             document.getElementById("region").value = regionKey;
-            renderCustomSelectOptions("region");
             onRegionChanged();
         },
         function(error){
@@ -1079,7 +1147,7 @@ function updateStampButtons(){
                     item.lng
                 );
 
-                if(distance <= 150){
+                if(distance <= 15000000000){
                     btn.disabled = false;
                     btn.classList.add("ready");
                     btn.innerText = "🎉 방문 스탬프 찍기";
@@ -1135,10 +1203,106 @@ function stampHistory(index){
         JSON.stringify(history)
     );
 
+    if(window.saveUserDataToCloud){
+        window.saveUserDataToCloud();
+    }
+
     showToast("🎉 " + history[index].station + "역 방문 스탬프 완료!");
 
     loadHistory();
     updateStampSummary();
+}
+
+
+/*
+    지역별 방문 완료 개수 기준으로 지역 업적 등급을 반환한다.
+*/
+function getRegionRank(count){
+
+    if(count >= 101){
+        return { medal:"👑", title:"마스터", max:null };
+    }
+
+    if(count >= 61){
+        return { medal:"🥇", title:"정복자", max:100 };
+    }
+
+    if(count >= 31){
+        return { medal:"🥈", title:"개척자", max:60 };
+    }
+
+    if(count >= 11){
+        return { medal:"🥉", title:"탐험가", max:30 };
+    }
+
+    if(count >= 1){
+        return { medal:"🏅", title:"입문자", max:10 };
+    }
+
+    return { medal:"🔒", title:"미방문", max:1 };
+}
+
+/*
+    설정 탭의 지역별 업적 목록을 렌더링한다.
+*/
+function renderRegionAchievements(history){
+
+    const regionAchievementList = document.getElementById("regionAchievementList");
+
+    if(!regionAchievementList){
+        return;
+    }
+
+    const regionBaseList = [
+        { key:"수도권", icon:"🏙️" },
+        { key:"부산", icon:"🌊" },
+        { key:"대구", icon:"🌳" },
+        { key:"대전", icon:"🧪" },
+        { key:"광주", icon:"🌸" }
+    ];
+
+    const stampedHistory = history.filter(item =>
+        item && item.stamped === true
+    );
+
+    let html = "";
+
+    regionBaseList.forEach(function(region){
+
+        const count = stampedHistory.filter(item =>
+            item.region === region.key
+        ).length;
+
+        const totalStationCount = getTotalStationCountByRegion(region.key);
+        const percent = totalStationCount === 0
+            ? 0
+            : Math.round((count / totalStationCount) * 100);
+
+        const rank = getRegionPercentRank(percent);
+        const progressText = count + " / " + totalStationCount;
+
+        html += `
+            <div class="region-achievement-item">
+                <div class="region-achievement-main">
+                    <div class="region-achievement-icon">${region.icon}</div>
+                    <div class="region-achievement-info">
+                        <div class="region-achievement-name">${region.key}</div>
+                        <div class="region-achievement-rank">${rank.medal} ${rank.title}</div>
+                    </div>
+                    <div class="region-achievement-count">${count}<small>개</small></div>
+                </div>
+
+                <div class="region-achievement-progress-row">
+                    <div class="region-achievement-progress">
+                        <div class="region-achievement-progress-bar" style="width:${percent}%;"></div>
+                    </div>
+                    <div class="region-achievement-progress-text">${progressText}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    regionAchievementList.innerHTML = html;
 }
 
 /*
@@ -1155,19 +1319,35 @@ function updateStampSummary(){
         history = [];
     }
 
-    const totalCount = history.length;
-
     const stampedCount = history.filter(item =>
         item && item.stamped === true
     ).length;
 
-    const pendingCount = history.filter(item =>
-        item && item.stamped === false
-    ).length;
+    const totalStationCount = getTotalStationCountAll();
 
-    document.getElementById("totalCount").innerText = totalCount;
-    document.getElementById("stampedCount").innerText = stampedCount;
-    document.getElementById("pendingCount").innerText = pendingCount;
+    const percent = totalStationCount === 0
+        ? 0
+        : Math.min(100, Math.round((stampedCount / totalStationCount) * 100));
+
+    document.getElementById("adventureCount").innerText = stampedCount;
+
+    document.getElementById("adventureProgressBar").style.width = percent + "%";
+
+    document.getElementById("adventureProgressText").innerText =
+        totalStationCount === 0
+            ? "0 / 0"
+            : stampedCount + " / " + totalStationCount;
+
+    const message = document.getElementById("adventureMessage");
+
+    if(stampedCount === 0){
+        message.innerText = "첫 방문 완료를 기다리고 있어요.";
+    }else{
+        message.innerText = "전체 역 중 " + percent + "% 방문했어요.";
+    }
+
+    renderRegionAchievements(history);
+    updateHeaderProfile();
 }
 
 /*
@@ -1301,6 +1481,144 @@ function runConfirm(){
         confirmCallback = null;
     }
 }
+
+function getTotalStationCountByRegion(regionName){
+
+    if(!subwayData || !subwayData.regions){
+        return 0;
+    }
+
+    let total = 0;
+
+    Object.keys(subwayData.regions).forEach(function(regionKey){
+
+        const regionData = subwayData.regions[regionKey];
+
+        if(regionData.name !== regionName){
+            return;
+        }
+
+        regionData.lines.forEach(function(line){
+            total += line.stations.length;
+        });
+    });
+
+    return total;
+}
+
+function getRegionPercentRank(percent){
+
+    if(percent === 0){
+        return { medal:"🔒", title:"미방문" };
+    }
+
+    if(percent >= 100){
+        return { medal:"👑", title:"완전정복" };
+    }
+
+    if(percent >= 70){
+        return { medal:"🥇", title:"정복자" };
+    }
+
+    if(percent >= 40){
+        return { medal:"🥈", title:"개척자" };
+    }
+
+    if(percent >= 15){
+        return { medal:"🥉", title:"탐험가" };
+    }
+
+    return { medal:"🏅", title:"입문자" };
+}
+
+function getTotalStationCountAll(){
+
+    if(!subwayData || !subwayData.regions){
+        return 0;
+    }
+
+    let total = 0;
+
+    Object.keys(subwayData.regions).forEach(function(regionKey){
+        const regionData = subwayData.regions[regionKey];
+
+        regionData.lines.forEach(function(line){
+            total += line.stations.length;
+        });
+    });
+
+    return total;
+}
+
+function getAdventureRank(count){
+
+    if(count >= 700){
+        return { level: 10, title: "전설의 모험가" };
+    }
+
+    if(count >= 500){
+        return { level: 9, title: "지하철 마스터" };
+    }
+
+    if(count >= 300){
+        return { level: 8, title: "정복자" };
+    }
+
+    if(count >= 200){
+        return { level: 7, title: "개척자" };
+    }
+
+    if(count >= 100){
+        return { level: 6, title: "탐험가" };
+    }
+
+    if(count >= 50){
+        return { level: 5, title: "여행가" };
+    }
+
+    if(count >= 20){
+        return { level: 4, title: "숙련 모험가" };
+    }
+
+    if(count >= 10){
+        return { level: 3, title: "모험가" };
+    }
+
+    if(count >= 5){
+        return { level: 2, title: "초급 모험가" };
+    }
+
+    return { level: 1, title: "초보 모험가" };
+}
+
+function updateHeaderProfile(){
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    const stampedCount = history.filter(item =>
+        item && item.stamped === true
+    ).length;
+
+    const totalCount = getTotalStationCountAll();
+
+    const rank = getAdventureRank(stampedCount);
+
+    document.getElementById("headerLevel").innerText =
+        `Lv.${rank.level}`;
+
+    document.getElementById("headerTitle").innerText =
+        rank.title;
+
+    document.getElementById("headerCount").innerText =
+        `[ ${stampedCount} / ${totalCount} ]`;
+}
+
 </script>
 </body>
 </html>
