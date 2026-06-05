@@ -9,525 +9,6 @@
 }
 
 body{
-    background:#f5f6f8;
-    padding:12px 12px 90px;
-}
-
-.container{
-    max-width:500px;
-    margin:0 auto;
-}
-
-/* =========================
-   공통 카드 / 버튼
-========================= */
-.card{
-    background:#fff;
-    border-radius:16px;
-    padding:14px;
-    margin-top:12px;
-    box-shadow:0 2px 10px rgba(0,0,0,0.08);
-}
-
-.label{
-    font-size:14px;
-    margin-bottom:8px;
-    font-weight:bold;
-}
-
-select{
-    width:100%;
-    height:46px;
-    border:1px solid #ddd;
-    border-radius:10px;
-    padding:0 10px;
-    font-size:15px;
-    background:#fff;
-}
-
-.button{
-    width:100%;
-    height:48px;
-    border:none;
-    border-radius:12px;
-    background:#4f46e5;
-    color:white;
-    font-size:17px;
-    font-weight:bold;
-    cursor:pointer;
-    margin-top:12px;
-}
-
-.button:active{
-    transform:scale(0.98);
-}
-
-/* =========================
-   상단 헤더
-========================= */
-.app-header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    margin-bottom:12px;
-}
-
-.app-title{
-    flex:1;
-}
-
-.app-name{
-    font-size:24px;
-    font-weight:800;
-    color:#111827;
-}
-
-.login-icon{
-    width:44px;
-    height:44px;
-    flex:0 0 44px;
-    border:none;
-    border-radius:12px;
-    background:#fff;
-    cursor:pointer;
-    box-shadow:0 2px 8px rgba(0,0,0,0.08);
-}
-
-.user-info{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    background:#fff;
-    border-radius:12px;
-    padding:6px 8px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.08);
-}
-
-.user-name{
-    max-width:90px;
-    font-size:12px;
-    font-weight:bold;
-    color:#333;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-}
-
-.logout-btn{
-    border:none;
-    border-radius:8px;
-    background:#e5e7eb;
-    padding:6px 8px;
-    font-size:12px;
-    cursor:pointer;
-}
-
-/* =========================
-   랜덤 조건 영역
-========================= */
-.region-row,
-.line-lock-row{
-    display:flex;
-    align-items:center;
-    gap:10px;
-}
-
-.line-lock-row{
-    margin-top:10px;
-}
-
-.region-label,
-.line-lock-label{
-    font-size:14px;
-    font-weight:bold;
-    white-space:nowrap;
-}
-
-.region-row select,
-.line-lock-row select{
-    flex:1;
-}
-
-.line-lock-check{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    white-space:nowrap;
-    font-size:14px;
-    font-weight:bold;
-}
-
-.line-lock-check input{
-    width:16px;
-    height:16px;
-}
-
-/* =========================
-   랜덤 결과 카드
-========================= */
-.result-card{
-    background:#fff;
-    border-radius:18px;
-    padding:20px 16px;
-    margin-top:12px;
-    text-align:center;
-    box-shadow:0 2px 10px rgba(0,0,0,0.08);
-}
-
-.result-path{
-    color:#777;
-    font-size:15px;
-    font-weight:bold;
-    display:flex;
-    justify-content:center;
-    gap:8px;
-    flex-wrap:wrap;
-}
-
-.result-station{
-    margin-top:14px;
-    font-size:32px;
-    font-weight:bold;
-    word-break:keep-all;
-}
-
-/* =========================
-   저장 / 주변검색 액션 버튼
-========================= */
-.save-area{
-    display:grid;
-    grid-template-columns:repeat(2, 1fr);
-    gap:14px;
-    margin-top:14px;
-}
-
-.action-chip{
-    height:100px;
-    border:none;
-    border-radius:20px;
-    background:#fff;
-    box-shadow:0 3px 12px rgba(0,0,0,0.10);
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    cursor:pointer;
-    font-size:15px;
-    font-weight:700;
-    color:#333;
-}
-
-.action-chip .icon{
-    font-size:34px;
-    margin-bottom:8px;
-}
-
-/* =========================
-   탭 페이지 / 하단 탭바
-========================= */
-.tab-page{
-    display:none;
-}
-
-.tab-page.active{
-    display:block;
-}
-
-.bottom-nav{
-    position:fixed;
-    left:50%;
-    bottom:12px;
-    transform:translateX(-50%);
-    width:calc(100% - 24px);
-    max-width:500px;
-    height:64px;
-    display:flex;
-    gap:6px;
-    padding:8px;
-    background:rgba(255,255,255,0.96);
-    border-radius:20px;
-    box-shadow:0 8px 24px rgba(0,0,0,0.16);
-    z-index:2000;
-}
-
-.bottom-tab{
-    flex:1;
-    height:48px;
-    border:none;
-    border-radius:14px;
-    background:transparent;
-    color:#6b7280;
-    font-size:12px;
-    font-weight:bold;
-    cursor:pointer;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:2px;
-}
-
-.bottom-tab.active{
-    background:#4f46e5;
-    color:white;
-}
-
-.tab-icon{
-    font-size:18px;
-    line-height:1;
-}
-
-/* =========================
-   방문기록 카드
-========================= */
-.history-card{
-    position:relative;
-    background:#fff;
-    border-radius:14px;
-    padding:16px;
-    margin-top:12px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.08);
-}
-
-.history-card.has-delete{
-    padding-right:44px;
-}
-
-.history-info{
-    margin-bottom:6px;
-    color:#666;
-    font-size:14px;
-}
-
-.history-station{
-    font-size:24px;
-    font-weight:bold;
-}
-
-.history-date{
-    margin-top:10px;
-    color:#999;
-    font-size:12px;
-}
-
-.delete-btn{
-    position:absolute;
-    top:10px;
-    right:10px;
-    width:30px;
-    height:30px;
-    border:none;
-    border-radius:50%;
-    background:#f1f1f1;
-    cursor:pointer;
-    font-size:16px;
-}
-
-/* 방문 스탬프 버튼 */
-.stamp-btn{
-    width:100%;
-    height:42px;
-    border:none;
-    border-radius:12px;
-    margin-top:10px;
-    font-size:14px;
-    font-weight:bold;
-    cursor:pointer;
-    background:#e5e7eb;
-    color:#6b7280;
-}
-
-.stamp-btn.ready{
-    background:#4f46e5;
-    color:white;
-}
-
-.stamp-btn.done{
-    background:#dcfce7;
-    color:#166534;
-    cursor:default;
-}
-
-.stamp-btn:disabled{
-    cursor:not-allowed;
-    opacity:0.85;
-}
-
-/* =========================
-   설정 탭
-========================= */
-.stamp-summary{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:10px;
-    margin-top:12px;
-}
-
-.summary-box{
-    background:#f9fafb;
-    border-radius:14px;
-    padding:14px 8px;
-    text-align:center;
-}
-
-.summary-title{
-    font-size:12px;
-    color:#6b7280;
-    font-weight:bold;
-}
-
-.summary-value{
-    margin-top:8px;
-    font-size:24px;
-    font-weight:800;
-    color:#4f46e5;
-}
-
-/* =========================
-   토스트 메시지
-========================= */
-#toast{
-    position:fixed;
-    left:50%;
-    bottom:100px;
-    transform:translateX(-50%);
-    max-width:calc(100% - 40px);
-    background:#111827;
-    color:white;
-    padding:12px 18px;
-    border-radius:12px;
-    font-size:14px;
-    opacity:0;
-    visibility:hidden;
-    transition:0.3s;
-    z-index:9999;
-    text-align:center;
-}
-
-#toast.show{
-    opacity:1;
-    visibility:visible;
-}
-
-/* =========================
-   커스텀 confirm 모달
-========================= */
-.confirm-modal{
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,0.4);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:99999;
-}
-
-.confirm-modal.show{
-    display:flex;
-}
-
-.confirm-box{
-    width:320px;
-    max-width:90%;
-    background:white;
-    border-radius:20px;
-    padding:20px;
-}
-
-.confirm-title{
-    font-size:18px;
-    font-weight:bold;
-}
-
-.confirm-message{
-    margin-top:12px;
-    color:#555;
-    line-height:1.5;
-}
-
-.confirm-buttons{
-    display:flex;
-    gap:10px;
-    margin-top:20px;
-}
-
-.confirm-buttons button{
-    flex:1;
-    height:44px;
-    border:none;
-    border-radius:12px;
-    cursor:pointer;
-}
-
-.confirm-cancel{
-    background:#e5e7eb;
-}
-
-.confirm-ok{
-    background:#ef4444;
-    color:white;
-}
-
-.filter-row{
-    display:flex;
-    align-items:center;
-    gap:8px;
-}
-
-.filter-label{
-    font-size:13px;
-    font-weight:bold;
-    white-space:nowrap;
-}
-
-.filter-row select{
-    height:38px;
-    border:1px solid #ddd;
-    border-radius:10px;
-    padding:0 8px;
-    font-size:14px;
-}
-
-#region{
-    flex:1.1;
-    min-width:82px;
-}
-
-#lineSelect{
-    flex:1;
-    min-width:88px;
-}
-
-.line-lock-check{
-    display:flex;
-    align-items:center;
-    gap:4px;
-    font-size:13px;
-    font-weight:bold;
-    white-space:nowrap;
-}
-
-.line-lock-check input{
-    width:15px;
-    height:15px;
-}
-
-/* =========================
-   공통 초기화
-========================= */
-
-/* =========================
-   공통 초기화
-========================= */
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:'맑은 고딕', sans-serif;
-}
-
-body{
     background:linear-gradient(180deg,#f8fafc 0%,#eef2ff 100%);
     padding:12px 12px 90px;
 }
@@ -554,114 +35,22 @@ body{
     font-weight:bold;
 }
 
-/* 기존 select는 값 저장용으로만 사용하고 화면에서는 숨긴다. */
-.native-select{
-    display:none;
-}
 
-/* =========================
-   커스텀 드롭다운
-========================= */
-.custom-select{
-    position:relative;
-    flex:1;
-    min-width:0;
-}
-
-.custom-select.disabled{
-    opacity:0.55;
-    pointer-events:none;
-}
-
-.custom-select-button{
+select{
     width:100%;
     height:40px;
     border:1px solid #e5e7eb;
     border-radius:14px;
-    padding:0 34px 0 12px;
-    background:linear-gradient(180deg, #ffffff, #f9fafb);
-    box-shadow:0 2px 8px rgba(0,0,0,0.06);
+    padding:0 10px;
+    background:#fff;
     color:#111827;
     font-size:14px;
     font-weight:700;
-    text-align:left;
-    cursor:pointer;
-    position:relative;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
 }
 
-.custom-select-button::after{
-    content:"⌄";
-    position:absolute;
-    right:12px;
-    top:50%;
-    transform:translateY(-55%);
-    color:#6b7280;
-    font-size:16px;
-    transition:0.2s;
-}
-
-.custom-select.open .custom-select-button{
-    border-color:#4f46e5;
-    box-shadow:0 0 0 3px rgba(79,70,229,0.12);
-}
-
-.custom-select.open .custom-select-button::after{
-    transform:translateY(-45%) rotate(180deg);
-}
-
-.custom-select-options{
-    position:absolute;
-    top:46px;
-    left:0;
-    right:0;
-    max-height:230px;
-    overflow:auto;
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:16px;
-    padding:6px;
-    box-shadow:0 14px 32px rgba(0,0,0,0.16);
-    z-index:3000;
-    display:none;
-}
-
-.custom-select.open .custom-select-options{
-    display:block;
-}
-
-.custom-option{
-    width:100%;
-    min-height:38px;
-    border:none;
-    border-radius:12px;
-    padding:9px 10px;
-    background:#fff;
-    color:#374151;
-    font-size:14px;
-    font-weight:700;
-    text-align:left;
-    cursor:pointer;
-}
-
-.custom-option:hover{
+select:disabled{
+    opacity:0.55;
     background:#f3f4f6;
-}
-
-.custom-option.selected{
-    background:#eef2ff;
-    color:#4f46e5;
-}
-
-.custom-option:disabled{
-    color:#9ca3af;
-    cursor:default;
-}
-
-.custom-option:disabled:hover{
-    background:#fff;
 }
 
 .button{
@@ -700,17 +89,6 @@ body{
     font-size:24px;
     font-weight:800;
     color:#111827;
-}
-
-.login-icon{
-    width:44px;
-    height:44px;
-    flex:0 0 44px;
-    border:none;
-    border-radius:12px;
-    background:#fff;
-    cursor:pointer;
-    box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
 .user-info{
@@ -1096,12 +474,12 @@ body{
     white-space:nowrap;
 }
 
-#regionCustom{
+#region{
     flex:1.1;
     min-width:82px;
 }
 
-#lineSelectCustom{
+#lineSelect{
     flex:1;
     min-width:88px;
 }
@@ -1533,4 +911,49 @@ select{
 .count{
     margin-left:8px;
     color:#999;
+}
+
+/* 경험치 / 레벨 UI */
+.exp-summary{
+    margin-top:12px;
+    padding:12px 14px;
+    border-radius:14px;
+    background:#f8fafc;
+    border:1px solid #e5e7eb;
+}
+.exp-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:8px;
+}
+.exp-label{
+    font-size:13px;
+    color:#6b7280;
+    font-weight:700;
+}
+.exp-value{
+    font-size:13px;
+    color:#111827;
+    font-weight:800;
+}
+.exp-bar{
+    width:100%;
+    height:10px;
+    border-radius:999px;
+    background:#e5e7eb;
+    overflow:hidden;
+}
+.exp-bar-fill{
+    width:0%;
+    height:100%;
+    border-radius:999px;
+    background:linear-gradient(90deg,#38bdf8,#6366f1);
+    transition:width .35s ease;
+}
+.exp-help{
+    margin-top:8px;
+    font-size:12px;
+    color:#6b7280;
 }

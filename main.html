@@ -7,6 +7,7 @@
 <title>아무데나</title>
 
 <link rel="stylesheet" href="style.css">
+
 </head>
 
 <body>
@@ -15,17 +16,13 @@
     <!-- 앱 상단 헤더 -->
     <div class="app-header">
         <div class="header-left">
-            <div class="app-name">아~무~데~나</div>
+            <!-- <div class="app-name">아~무~데~나</div> -->
             <div class="user-level">
                 <span id="headerLevel" class="level"></span>
                 <span id="headerTitle" class="title"></span>
                 <span id="headerCount" class="count"></span>
             </div>
         </div>
-
-        <button id="loginBtn" class="login-icon" title="Google 로그인">
-            👤
-        </button>
 
         <div id="userInfo" class="user-info" style="display:none;">
             <div id="userName" class="user-name"></div>
@@ -149,11 +146,22 @@
                     첫 방문 완료를 기다리고 있어요.
                 </div>
 
+                <div class="exp-summary">
+                    <div class="exp-top">
+                        <div class="exp-label">다음 레벨까지</div>
+                        <div class="exp-value" id="expText">EXP 0 / 30</div>
+                    </div>
+                    <div class="exp-bar">
+                        <div class="exp-bar-fill" id="expBar"></div>
+                    </div>
+                    <div class="exp-help" id="expHelp">방문 스탬프 1개당 EXP 10을 얻어요.</div>
+                </div>
+
                 <div class="adventure-progress-row">
                     <div class="adventure-progress">
                         <div class="adventure-progress-bar" id="adventureProgressBar"></div>
                     </div>
-                    <div class="adventure-progress-text" id="adventureProgressText">0 / 20</div>
+                    <div class="adventure-progress-text" id="adventureProgressText">0 / 0</div>
                 </div>
             </div>
         </div>
@@ -224,16 +232,14 @@
 
 <script type="module">
 /*
-    Firebase Google 로그인 처리 영역
-    - type="module" 안에서 Firebase SDK를 import한다.
-    - 일반 함수들과 충돌하지 않도록 로그인 관련 코드만 여기서 관리한다.
+    Firebase 인증 상태 확인 / 로그아웃 / Firestore 동기화 영역
+    - 로그인 팝업은 index.html에서만 처리한다.
+    - main.html은 로그인된 사용자만 접근하고, 비로그인 상태면 index.html로 보낸다.
 */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 
 import {
     getAuth,
-    GoogleAuthProvider,
-    signInWithPopup,
     signOut,
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
@@ -335,49 +341,14 @@ window.saveUserDataToCloud = saveUserDataToCloud;
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
 const db = getFirestore(app);
 
 let currentUser = null;
+window.currentUserEmail = "";
 
-const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const userInfo = document.getElementById("userInfo");
 const userName = document.getElementById("userName");
-
-// Google 로그인 팝업을 실행한다.
-loginBtn.addEventListener("click", function(){
-
-    let history = [];
-
-    try{
-        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
-    }catch(e){
-        history = [];
-    }
-
-    if(history.length > 0){
-
-        const ok = showConfirm(
-            "⚠️ 현재 기기에 저장된 방문기록이 있습니다.\n\n" +
-            "처음 로그인 시 클라우드 데이터와 동기화되며\n" +
-            "기존 로컬 데이터가 변경될 수 있습니다.\n\n" +
-            "계속 로그인하시겠습니까?", 
-            function(){
-                signInWithPopup(auth, provider).catch(function(error){
-                    console.log(error);
-                    showToast("로그인 실패");
-                });
-            }
-        );
-
-        if(!ok){
-            return;
-        }
-    }
-
-    
-});
 
 // 로그아웃을 실행한다.
 logoutBtn.addEventListener("click", function(){
@@ -388,13 +359,15 @@ logoutBtn.addEventListener("click", function(){
 onAuthStateChanged(auth, async function(user){
     if(user){
         currentUser = user;
+        window.currentUserEmail = user.email || "";
 
-        loginBtn.style.display = "none";
         userInfo.style.display = "flex";
         userName.innerText = user.displayName + "님";
 
         await loadUserDataFromCloud();
     }else{
+        currentUser = null;
+        window.currentUserEmail = "";
         location.href = "index.html";
     }
 });
@@ -445,6 +418,24 @@ let selectedStationPosition = null; // 현재 뽑힌 역 좌표
 let visitedMap = null;              // 방문지도 지도 객체
 let visitedMarkers = [];            // 방문지도 마커 목록
 let confirmCallback = null;         // 커스텀 confirm 확인 콜백
+
+/* =========================
+   테스트용 거리 제한 우회 설정
+   - 아래 이메일에 해당하는 로그인 사용자는 위치와 상관없이 스탬프 가능
+   - 실제 배포 전에는 테스트 이메일을 제거하거나 주석 처리
+========================= */
+const DISTANCE_FREE_TEST_EMAILS = [
+    "park3jr@gmail.com"
+];
+
+function isDistanceFreeTestUser(){
+
+    const email = String(window.currentUserEmail || "").toLowerCase();
+
+    return DISTANCE_FREE_TEST_EMAILS
+        .map(item => String(item).toLowerCase())
+        .includes(email);
+}
 
 /* 앱 시작 시 지하철 데이터와 방문기록을 불러온다. */
 loadSubwayData();
@@ -727,11 +718,11 @@ function loadHistory(){
 
     history.forEach((item, idx)=>{
 
-        const deletableClass = item.stamped ? "" : "has-delete";
+        const deletableClass = (!item.stamped || isTestUser()) ? "has-delete" : "";
 
         html += `
         <div class="history-card ${deletableClass}">
-            ${!item.stamped ? `
+            ${(!item.stamped || isTestUser()) ? `
                 <button
                     class="delete-btn"
                     onclick="deleteHistory(${idx})">
@@ -1109,6 +1100,22 @@ function updateStampButtons(){
         return;
     }
 
+    if(isDistanceFreeTestUser()){
+        history.forEach(function(item, idx){
+
+            const btn = document.getElementById("stampBtn_" + idx);
+
+            if(!btn || item.stamped){
+                return;
+            }
+
+            btn.disabled = false;
+            btn.classList.add("ready");
+            btn.innerText = "🧪 테스트 계정 - 방문 스탬프 찍기";
+        });
+        return;
+    }
+
     if(!navigator.geolocation){
         history.forEach(function(item, idx){
             const btn = document.getElementById("stampBtn_" + idx);
@@ -1147,7 +1154,7 @@ function updateStampButtons(){
                     item.lng
                 );
 
-                if(distance <= 15000000000){
+                if(distance <= 150){
                     btn.disabled = false;
                     btn.classList.add("ready");
                     btn.innerText = "🎉 방문 스탬프 찍기";
@@ -1195,6 +1202,12 @@ function stampHistory(index){
         return;
     }
 
+    const beforeStampedCount = history.filter(item =>
+        item && item.stamped === true
+    ).length;
+
+    const beforeRank = getAdventureRank(beforeStampedCount);
+
     history[index].stamped = true;
     history[index].stampedDate = new Date().toLocaleString();
 
@@ -1207,7 +1220,17 @@ function stampHistory(index){
         window.saveUserDataToCloud();
     }
 
-    showToast("🎉 " + history[index].station + "역 방문 스탬프 완료!");
+    const afterStampedCount = history.filter(item =>
+        item && item.stamped === true
+    ).length;
+
+    const afterRank = getAdventureRank(afterStampedCount);
+
+    if(afterRank.level > beforeRank.level){
+        showToast("🎉 LEVEL UP! Lv." + afterRank.level + " " + afterRank.title);
+    }else{
+        showToast("🎉 " + history[index].station + "역 방문 스탬프 완료! EXP +10");
+    }
 
     loadHistory();
     updateStampSummary();
@@ -1330,6 +1353,8 @@ function updateStampSummary(){
         : Math.min(100, Math.round((stampedCount / totalStationCount) * 100));
 
     document.getElementById("adventureCount").innerText = stampedCount;
+
+    updateAdventureExpUI(stampedCount, totalStationCount);
 
     document.getElementById("adventureProgressBar").style.width = percent + "%";
 
@@ -1550,45 +1575,69 @@ function getTotalStationCountAll(){
     return total;
 }
 
+function getExpByStampedCount(count){
+    return count * 10;
+}
+
+/*
+    EXP 기준으로 레벨과 칭호를 계산한다.
+    - 방문 스탬프 1개 = EXP 10
+    - levelStartExp: 현재 레벨 시작 EXP
+    - nextExp: 다음 레벨 필요 EXP
+*/
+function getAdventureRankByExp(exp){
+
+    const levels = [
+        { level:1, title:"초보 모험가", minExp:0, medal:"🏅" },
+        { level:2, title:"초급 모험가", minExp:100, medal:"🥉" },      // 10역
+        { level:3, title:"동네 탐험가", minExp:300, medal:"🥉" },      // 30역
+        { level:4, title:"지하철 여행자", minExp:600, medal:"🥈" },    // 60역
+        { level:5, title:"숙련 모험가", minExp:1000, medal:"🥈" },     // 100역
+        { level:6, title:"노선 개척자", minExp:2000, medal:"🥇" },     // 200역
+        { level:7, title:"지역 정복자", minExp:3500, medal:"🥇" },     // 350역
+        { level:8, title:"전국 탐험가", minExp:5500, medal:"👑" },     // 550역
+        { level:9, title:"지하철 마스터", minExp:7500, medal:"👑" },   // 750역
+        { level:10, title:"전설의 모험가", minExp:9740, medal:"🌟" }   // 974역
+    ];
+
+    let current = levels[0];
+    let next = levels[1];
+
+    for(let i = 0; i < levels.length; i++){
+        if(exp >= levels[i].minExp){
+            current = levels[i];
+            next = levels[i + 1] || null;
+        }
+    }
+
+    const levelStartExp = current.minExp;
+    const nextExp = next ? next.minExp : current.minExp;
+    const currentLevelExp = exp - levelStartExp;
+    const needLevelExp = next ? next.minExp - levelStartExp : 0;
+    const percent = next
+        ? Math.min(100, Math.round((currentLevelExp / needLevelExp) * 100))
+        : 100;
+
+    return {
+        level: current.level,
+        title: current.title,
+        medal: current.medal,
+        exp: exp,
+        levelStartExp: levelStartExp,
+        nextExp: nextExp,
+        currentLevelExp: currentLevelExp,
+        needLevelExp: needLevelExp,
+        percent: percent,
+        isMax: next === null
+    };
+}
+
+/*
+    기존 함수명 유지용 래퍼.
+    count는 방문 완료 역 수이고, 내부에서 EXP로 변환한다.
+*/
 function getAdventureRank(count){
-
-    if(count >= 700){
-        return { level: 10, title: "전설의 모험가" };
-    }
-
-    if(count >= 500){
-        return { level: 9, title: "지하철 마스터" };
-    }
-
-    if(count >= 300){
-        return { level: 8, title: "정복자" };
-    }
-
-    if(count >= 200){
-        return { level: 7, title: "개척자" };
-    }
-
-    if(count >= 100){
-        return { level: 6, title: "탐험가" };
-    }
-
-    if(count >= 50){
-        return { level: 5, title: "여행가" };
-    }
-
-    if(count >= 20){
-        return { level: 4, title: "숙련 모험가" };
-    }
-
-    if(count >= 10){
-        return { level: 3, title: "모험가" };
-    }
-
-    if(count >= 5){
-        return { level: 2, title: "초급 모험가" };
-    }
-
-    return { level: 1, title: "초보 모험가" };
+    return getAdventureRankByExp(getExpByStampedCount(count));
 }
 
 function updateHeaderProfile(){
@@ -1605,8 +1654,6 @@ function updateHeaderProfile(){
         item && item.stamped === true
     ).length;
 
-    const totalCount = getTotalStationCountAll();
-
     const rank = getAdventureRank(stampedCount);
 
     document.getElementById("headerLevel").innerText =
@@ -1615,10 +1662,61 @@ function updateHeaderProfile(){
     document.getElementById("headerTitle").innerText =
         rank.title;
 
-    document.getElementById("headerCount").innerText =
-        `[ ${stampedCount} / ${totalCount} ]`;
+    document.getElementById("headerCount").innerText = rank.isMax
+        ? `EXP ${rank.exp} / MAX`
+        : `EXP ${rank.exp} / ${rank.nextExp}`;
 }
 
+/*
+    설정 탭의 등급 카드에 EXP와 레벨 정보를 표시한다.
+*/
+function updateAdventureExpUI(stampedCount, totalStationCount){
+
+    const rank = getAdventureRank(stampedCount);
+    const expText = document.getElementById("expText");
+    const expBar = document.getElementById("expBar");
+    const expHelp = document.getElementById("expHelp");
+    const adventureCard = document.getElementById("adventureCard");
+    const adventureMedal = document.getElementById("adventureMedal");
+    const adventureTitle = document.getElementById("adventureTitle");
+
+    if(adventureCard){
+        adventureCard.style.display = "flex";
+    }
+
+    if(adventureMedal){
+        adventureMedal.innerText = rank.medal;
+    }
+
+    if(adventureTitle){
+        adventureTitle.innerText = `Lv.${rank.level} ${rank.title}`;
+    }
+
+    if(expText){
+        expText.innerText = rank.isMax
+            ? `EXP ${rank.exp} / MAX`
+            : `EXP ${rank.exp} / ${rank.nextExp}`;
+    }
+
+    if(expBar){
+        expBar.style.width = rank.percent + "%";
+    }
+
+    if(expHelp){
+        if(rank.isMax){
+            expHelp.innerText = "최고 레벨에 도달했어요.";
+        }else{
+            const remainExp = rank.nextExp - rank.exp;
+            const remainStamp = Math.ceil(remainExp / 10);
+            expHelp.innerText = `다음 레벨까지 ${remainExp} EXP, 방문 스탬프 ${remainStamp}개 남았어요.`;
+        }
+    }
+}
+
+function isTestUser(){
+
+    return isDistanceFreeTestUser();
+}
 </script>
 </body>
 </html>
