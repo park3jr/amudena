@@ -1495,3 +1495,42 @@ select{
     background:linear-gradient(90deg,#4f46e5,#22c55e);
     transition:width 0.35s ease;
 }
+
+.app-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 16px;
+}
+
+.header-left{
+    display:flex;
+    flex-direction:column;
+}
+
+.app-name{
+    font-size:28px;
+    font-weight:700;
+}
+
+.user-level{
+    margin-top:4px;
+    font-size:13px;
+    color:#666;
+}
+
+.level{
+    color:#6c63ff;
+    font-weight:700;
+}
+
+.title{
+    color:#2e7d32;
+    font-weight:600;
+    margin-left:4px;
+}
+
+.count{
+    margin-left:8px;
+    color:#999;
+}
