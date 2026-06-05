@@ -18,9 +18,15 @@
         <div class="header-left">
             <!-- <div class="app-name">아~무~데~나</div> -->
             <div class="user-level">
-                <span id="headerLevel" class="level"></span>
-                <span id="headerTitle" class="title"></span>
-                <span id="headerCount" class="count"></span>
+                <div class="level-row">
+                    <span id="headerLevel"></span>
+                    <span id="headerTitle"></span>
+                    <span id="headerMedal" class="medal">
+                        🥉
+                    </span>
+                </div>
+
+                <div class="exp-row" id="headerCount"></div>
             </div>
         </div>
 
@@ -120,7 +126,7 @@
         <div class="adventure-card" id="adventureCard" style="display:none;">
             <div class="adventure-medal" id="adventureMedal">🏅</div>
 
-            <div class="adventure-content">
+            <div class="adventure-content" style="display:none;">
                 <div class="adventure-label">나의 방문 등급</div>
                 <div class="adventure-title" id="adventureTitle">초급 모험가</div>
 
@@ -1665,6 +1671,7 @@ function updateHeaderProfile(){
     document.getElementById("headerCount").innerText = rank.isMax
         ? `EXP ${rank.exp} / MAX`
         : `EXP ${rank.exp} / ${rank.nextExp}`;
+    document.getElementById("headerMedal").innerText = rank.medal;
 }
 
 /*
@@ -1681,7 +1688,7 @@ function updateAdventureExpUI(stampedCount, totalStationCount){
     const adventureTitle = document.getElementById("adventureTitle");
 
     if(adventureCard){
-        adventureCard.style.display = "flex";
+        // adventureCard.style.display = "flex";
     }
 
     if(adventureMedal){
