@@ -347,11 +347,36 @@ const userName = document.getElementById("userName");
 
 // Google 로그인 팝업을 실행한다.
 loginBtn.addEventListener("click", function(){
-    signInWithPopup(auth, provider)
-        .catch(function(error){
-            console.log(error);
-            showToast("로그인 실패");
-        });
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    if(history.length > 0){
+
+        const ok = showConfirm(
+            "⚠️ 현재 기기에 저장된 방문기록이 있습니다.\n\n" +
+            "처음 로그인 시 클라우드 데이터와 동기화되며\n" +
+            "기존 로컬 데이터가 변경될 수 있습니다.\n\n" +
+            "계속 로그인하시겠습니까?", 
+            function(){
+                signInWithPopup(auth, provider).catch(function(error){
+                    console.log(error);
+                    showToast("로그인 실패");
+                });
+            }
+        );
+
+        if(!ok){
+            return;
+        }
+    }
+
+    
 });
 
 // 로그아웃을 실행한다.
