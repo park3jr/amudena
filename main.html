@@ -1828,12 +1828,12 @@ async function saveVisitPhoto(index, input){
     try{
         showToast("사진을 저장하는 중입니다.");
 
-        const resizedBlob = await resizeImageFile(file, 1280, 0.78);
+        const uploadFile = file;
         const nowText = new Date().toLocaleString();
 
         const uploaded = await window.uploadVisitPhotoToStorage(
             history[index].station,
-            resizedBlob,
+            uploadFile,
             file.name
         );
 
