@@ -1781,8 +1781,27 @@ async function saveVisitPhoto(index, input){
         return;
     }
 
-    if(!file.type.startsWith("image/")){
-        showToast("이미지 파일만 등록할 수 있습니다.");
+    const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    ];
+
+    const fileName = String(file.name || "").toLowerCase();
+    const isHeic =
+        file.type === "image/heic" ||
+        file.type === "image/heif" ||
+        fileName.endsWith(".heic") ||
+        fileName.endsWith(".heif");
+
+    if(isHeic){
+        showToast("아이폰 HEIC 사진은 지원하지 않습니다. JPG로 변환 후 등록해주세요.");
+        input.value = "";
+        return;
+    }
+
+    if(!allowedTypes.includes(file.type)){
+        showToast("JPG, PNG, WEBP 사진만 등록할 수 있습니다.");
         input.value = "";
         return;
     }
@@ -1800,58 +1819,43 @@ async function saveVisitPhoto(index, input){
         return;
     }
 
+    if(!window.uploadVisitPhotoToStorage || !window.currentUserUid){
+        showToast("로그인 또는 Firebase Storage 연결을 확인해주세요.");
+        input.value = "";
+        return;
+    }
+
     try{
         showToast("사진을 저장하는 중입니다.");
 
-        // 원본 사진을 그대로 저장하면 localStorage/Firestore 용량을 쉽게 초과하므로 압축한다.
         const resizedBlob = await resizeImageFile(file, 1280, 0.78);
         const nowText = new Date().toLocaleString();
 
-        let photoData = null;
+        const uploaded = await window.uploadVisitPhotoToStorage(
+            history[index].station,
+            resizedBlob,
+            file.name
+        );
 
-        if(window.uploadVisitPhotoToStorage && window.currentUserUid){
-            const uploaded = await window.uploadVisitPhotoToStorage(
-                history[index].station,
-                resizedBlob,
-                file.name
-            );
-
-            photoData = {
-                url: uploaded.url,
-                path: uploaded.path,
-                date: nowText
-            };
-        }else{
-            // 혹시 비로그인 테스트 환경에서 실행될 경우를 위한 로컬 저장 fallback.
-            // 운영에서는 Firebase Storage URL 저장이 기본이다.
-            photoData = {
-                url: await blobToDataUrl(resizedBlob),
-                path: null,
-                date: nowText
-            };
-        }
+        const photoData = {
+            url: uploaded.url,
+            path: uploaded.path,
+            date: nowText
+        };
 
         if(!Array.isArray(history[index].photos)){
             history[index].photos = getPhotosFromItem(history[index]);
         }
 
-        // 예전 단일 사진 필드는 새 구조와 중복되므로 제거한다.
         delete history[index].photo;
         delete history[index].photoDate;
 
         history[index].photos.push(photoData);
 
-        try{
-            localStorage.setItem(
-                "amudenaHistory",
-                JSON.stringify(history)
-            );
-        }catch(storageError){
-            console.error(storageError);
-            showToast("사진 저장 공간이 부족합니다. 사진을 줄여주세요.");
-            input.value = "";
-            return;
-        }
+        localStorage.setItem(
+            "amudenaHistory",
+            JSON.stringify(history)
+        );
 
         if(window.saveUserDataToCloud){
             await window.saveUserDataToCloud();
@@ -1865,7 +1869,7 @@ async function saveVisitPhoto(index, input){
 
     }catch(e){
         console.error(e);
-        showToast("사진 저장에 실패했습니다.");
+        showToast(e.message || "사진 저장에 실패했습니다.");
         input.value = "";
     }
 }
