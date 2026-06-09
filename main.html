@@ -271,6 +271,14 @@ import {
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL,
+    deleteObject
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+
 const firebaseConfig = {
     apiKey: "AIzaSyDcFHogdIhpiTopWNuKPg_BjPOrE0ZpZHw",
     authDomain: "compensation-cf2f8.firebaseapp.com",
@@ -280,6 +288,37 @@ const firebaseConfig = {
     messagingSenderId: "1075779261298",
     appId: "1:1075779261298:web:b203b15ae60abad87103eb"
 };
+
+
+function getSafeStorageName(value){
+
+    return String(value || "unknown")
+        .replace(/[\\/:*?"<>|.#$\[\]]/g, "_")
+        .replace(/\s+/g, "_");
+}
+
+function sanitizeHistoryForCloud(item){
+
+    const cloudItem = { ...item };
+
+    // 예전 단일 사진 구조는 Firestore 용량 초과를 막기 위해 클라우드 저장에서 제외한다.
+    if(cloudItem.photo && String(cloudItem.photo).startsWith("data:image/")){
+        delete cloudItem.photo;
+        delete cloudItem.photoDate;
+    }
+
+    // photos 배열 중 Firebase Storage URL 또는 일반 URL만 Firestore에 저장한다.
+    // Base64 DataURL은 문서 크기 1MB 제한을 넘길 수 있어 제외한다.
+    if(Array.isArray(cloudItem.photos)){
+        cloudItem.photos = cloudItem.photos.filter(photo =>
+            photo &&
+            photo.url &&
+            !String(photo.url).startsWith("data:image/")
+        );
+    }
+
+    return cloudItem;
+}
 
 async function saveUserDataToCloud(){
 
@@ -312,7 +351,7 @@ async function saveUserDataToCloud(){
 
         await setDoc(
             doc(db, "users", currentUser.uid, "histories", historyId),
-            item,
+            sanitizeHistoryForCloud(item),
             { merge:true }
         );
     }
@@ -359,9 +398,11 @@ window.saveUserDataToCloud = saveUserDataToCloud;
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 let currentUser = null;
 window.currentUserEmail = "";
+window.currentUserUid = "";
 
 const logoutBtn = document.getElementById("logoutBtn");
 const userInfo = document.getElementById("userInfo");
@@ -377,6 +418,7 @@ onAuthStateChanged(auth, async function(user){
     if(user){
         currentUser = user;
         window.currentUserEmail = user.email || "";
+        window.currentUserUid = user.uid || "";
 
         userInfo.style.display = "flex";
         userName.innerText = user.displayName + "님";
@@ -385,10 +427,52 @@ onAuthStateChanged(auth, async function(user){
     }else{
         currentUser = null;
         window.currentUserEmail = "";
+        window.currentUserUid = "";
         location.href = "index.html";
     }
 });
 
+
+
+async function uploadVisitPhotoToStorage(stationName, fileBlob, originalFileName){
+
+    if(!currentUser){
+        throw new Error("로그인 정보가 없습니다.");
+    }
+
+    const safeStation = getSafeStorageName(stationName);
+    const safeFileName = getSafeStorageName(originalFileName || "visit-photo.jpg");
+    const path = `users/${currentUser.uid}/visit-photos/${safeStation}/${Date.now()}_${safeFileName}`;
+    const photoRef = ref(storage, path);
+
+    await uploadBytes(photoRef, fileBlob, {
+        contentType: fileBlob.type || "image/jpeg"
+    });
+
+    const url = await getDownloadURL(photoRef);
+
+    return {
+        url: url,
+        path: path
+    };
+}
+
+window.uploadVisitPhotoToStorage = uploadVisitPhotoToStorage;
+
+async function deleteVisitPhotoFromStorage(path){
+
+    if(!currentUser || !path){
+        return;
+    }
+
+    try{
+        await deleteObject(ref(storage, path));
+    }catch(e){
+        console.log("Storage 사진 삭제 실패:", e);
+    }
+}
+
+window.deleteVisitPhotoFromStorage = deleteVisitPhotoFromStorage;
 
 async function deleteUserHistoryFromCloud(stationName){
 
@@ -1591,11 +1675,105 @@ function openPhotoPicker(index){
     const input = document.getElementById("photoInput_" + index);
 
     if(input){
+        // 같은 파일을 다시 선택해도 onchange가 발생하도록 선택값을 먼저 초기화한다.
+        input.value = "";
         input.click();
     }
 }
 
-function saveVisitPhoto(index, input){
+function getPhotosFromItem(item){
+
+    if(!item){
+        return [];
+    }
+
+    if(Array.isArray(item.photos)){
+        return item.photos;
+    }
+
+    // 예전 단일 photo 구조를 읽을 수 있게 호환 처리한다.
+    if(item.photo){
+        return [{
+            url: item.photo,
+            date: item.photoDate || item.stampedDate || "",
+            path: null
+        }];
+    }
+
+    return [];
+}
+
+function resizeImageFile(file, maxWidth, quality){
+
+    return new Promise(function(resolve, reject){
+
+        const reader = new FileReader();
+
+        reader.onload = function(e){
+
+            const img = new Image();
+
+            img.onload = function(){
+
+                const ratio = Math.min(1, maxWidth / img.width);
+                const width = Math.round(img.width * ratio);
+                const height = Math.round(img.height * ratio);
+
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob(
+                    function(blob){
+                        if(!blob){
+                            reject(new Error("이미지 압축에 실패했습니다."));
+                            return;
+                        }
+
+                        resolve(blob);
+                    },
+                    "image/jpeg",
+                    quality
+                );
+            };
+
+            img.onerror = function(){
+                reject(new Error("이미지를 읽지 못했습니다."));
+            };
+
+            img.src = e.target.result;
+        };
+
+        reader.onerror = function(){
+            reject(new Error("파일을 읽지 못했습니다."));
+        };
+
+        reader.readAsDataURL(file);
+    });
+}
+
+function blobToDataUrl(blob){
+
+    return new Promise(function(resolve, reject){
+
+        const reader = new FileReader();
+
+        reader.onload = function(e){
+            resolve(e.target.result);
+        };
+
+        reader.onerror = function(){
+            reject(new Error("이미지 변환에 실패했습니다."));
+        };
+
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function saveVisitPhoto(index, input){
 
     const file = input.files[0];
 
@@ -1605,44 +1783,91 @@ function saveVisitPhoto(index, input){
 
     if(!file.type.startsWith("image/")){
         showToast("이미지 파일만 등록할 수 있습니다.");
+        input.value = "";
         return;
     }
 
-    const reader = new FileReader();
+    let history = [];
 
-    reader.onload = function(e){
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(err){
+        history = [];
+    }
 
-        let history = [];
+    if(!history[index]){
+        input.value = "";
+        return;
+    }
 
-        try{
-            history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
-        }catch(err){
-            history = [];
+    try{
+        showToast("사진을 저장하는 중입니다.");
+
+        // 원본 사진을 그대로 저장하면 localStorage/Firestore 용량을 쉽게 초과하므로 압축한다.
+        const resizedBlob = await resizeImageFile(file, 1280, 0.78);
+        const nowText = new Date().toLocaleString();
+
+        let photoData = null;
+
+        if(window.uploadVisitPhotoToStorage && window.currentUserUid){
+            const uploaded = await window.uploadVisitPhotoToStorage(
+                history[index].station,
+                resizedBlob,
+                file.name
+            );
+
+            photoData = {
+                url: uploaded.url,
+                path: uploaded.path,
+                date: nowText
+            };
+        }else{
+            // 혹시 비로그인 테스트 환경에서 실행될 경우를 위한 로컬 저장 fallback.
+            // 운영에서는 Firebase Storage URL 저장이 기본이다.
+            photoData = {
+                url: await blobToDataUrl(resizedBlob),
+                path: null,
+                date: nowText
+            };
         }
 
-        if(!history[index]){
+        if(!Array.isArray(history[index].photos)){
+            history[index].photos = getPhotosFromItem(history[index]);
+        }
+
+        // 예전 단일 사진 필드는 새 구조와 중복되므로 제거한다.
+        delete history[index].photo;
+        delete history[index].photoDate;
+
+        history[index].photos.push(photoData);
+
+        try{
+            localStorage.setItem(
+                "amudenaHistory",
+                JSON.stringify(history)
+            );
+        }catch(storageError){
+            console.error(storageError);
+            showToast("사진 저장 공간이 부족합니다. 사진을 줄여주세요.");
+            input.value = "";
             return;
         }
 
-        history[index].photo = e.target.result;
-        history[index].photoDate = new Date().toLocaleString();
-
-        localStorage.setItem(
-            "amudenaHistory",
-            JSON.stringify(history)
-        );
-
         if(window.saveUserDataToCloud){
-            window.saveUserDataToCloud();
+            await window.saveUserDataToCloud();
         }
 
         showToast("사진이 추가되었습니다.");
 
+        input.value = "";
         loadHistory();
         renderGallery();
-    };
 
-    reader.readAsDataURL(file);
+    }catch(e){
+        console.error(e);
+        showToast("사진 저장에 실패했습니다.");
+        input.value = "";
+    }
 }
 
 function renderGallery(){
@@ -1661,34 +1886,53 @@ function renderGallery(){
         return;
     }
 
-    const photoList = history.filter(item =>
-        item && item.photo
-    );
+    const photoList = [];
+
+    history.forEach(function(item, historyIndex){
+
+        const photos = getPhotosFromItem(item);
+
+        photos.forEach(function(photo, photoIndex){
+            photoList.push({
+                historyIndex: historyIndex,
+                photoIndex: photoIndex,
+                station: item.station,
+                line: item.line,
+                url: photo.url,
+                path: photo.path || null,
+                date: photo.date || item.stampedDate || ""
+            });
+        });
+    });
 
     if(photoList.length === 0){
         galleryList.innerHTML = "사진이 없습니다.";
         return;
     }
 
+    photoList.sort(function(a, b){
+        return String(b.date).localeCompare(String(a.date));
+    });
+
     let html = "";
 
-    photoList.forEach(function(item){
+    photoList.forEach(function(photo){
 
         html += `
             <div class="gallery-item">
                 <button
                     class="gallery-delete-btn"
-                    onclick="deletePhoto('${item.station}')">
+                    onclick="deletePhoto(${photo.historyIndex}, ${photo.photoIndex})">
                     ✕
                 </button>
-                <img src="${item.photo}" alt="${item.station}역 사진">
+                <img src="${photo.url}" alt="${photo.station}역 사진">
 
                 <div class="gallery-info">
                     <div class="gallery-station">
-                        🚆 ${item.station}역
+                        🚆 ${photo.station}역
                     </div>
                     <div class="gallery-date">
-                        ${item.photoDate || item.stampedDate || ""}
+                        ${photo.date || ""}
                     </div>
                 </div>
             </div>
@@ -1967,11 +2211,11 @@ function isTestUser(){
     return isDistanceFreeTestUser();
 }
 
-function deletePhoto(station){
+async function deletePhoto(historyIndex, photoIndex){
 
     showConfirm(
         "사진을 삭제하시겠습니까?",
-        function(){
+        async function(){
 
             let history = [];
 
@@ -1983,13 +2227,27 @@ function deletePhoto(station){
                 history = [];
             }
 
-            const item = history.find(h =>
-                h.station === station
-            );
+            const item = history[historyIndex];
 
             if(!item){
                 return;
             }
+
+            if(!Array.isArray(item.photos)){
+                item.photos = getPhotosFromItem(item);
+            }
+
+            const deletedPhoto = item.photos[photoIndex];
+
+            if(!deletedPhoto){
+                return;
+            }
+
+            if(window.deleteVisitPhotoFromStorage && deletedPhoto.path){
+                await window.deleteVisitPhotoFromStorage(deletedPhoto.path);
+            }
+
+            item.photos.splice(photoIndex, 1);
 
             delete item.photo;
             delete item.photoDate;
@@ -2000,7 +2258,7 @@ function deletePhoto(station){
             );
 
             if(window.saveUserDataToCloud){
-                window.saveUserDataToCloud();
+                await window.saveUserDataToCloud();
             }
 
             renderGallery();
