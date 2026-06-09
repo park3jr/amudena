@@ -1441,15 +1441,25 @@ function showVisitedMap(){
 
         const infoWindow = new kakao.maps.InfoWindow({
             content: `
-                <div style="padding:6px 10px;font-size:13px;">
-                    <b>${item.station}역</b><br>
-                    ${item.region} · ${item.line}
-                </div>
+            <div style="padding:8px 10px;font-size:13px;line-height:1.5;">
+                <b>${item.station}역</b><br>
+                ${item.region} · ${item.line}<br>
+                <span style="color:#666;">
+                    방문일 : ${item.stampedDate || "-"}
+                </span>
+            </div>
             `
         });
 
+        let opened = false;
         kakao.maps.event.addListener(marker, "click", function(){
-            infoWindow.open(visitedMap, marker);
+            if(opened){
+                infoWindow.close();
+                opened = false;
+            }else{
+                infoWindow.open(visitedMap, marker);
+                opened = true;
+            }
         });
     });
 
@@ -1594,7 +1604,7 @@ function getExpByStampedCount(count){
 function getAdventureRankByExp(exp){
 
     const levels = [
-        { level:1, title:"초보 모험가", minExp:0, medal:"🏅" },
+        { level:1, title:"신입 모험가", minExp:0, medal:"🏅" },
         { level:2, title:"초급 모험가", minExp:100, medal:"🥉" },      // 10역
         { level:3, title:"동네 탐험가", minExp:300, medal:"🥉" },      // 30역
         { level:4, title:"지하철 여행자", minExp:600, medal:"🥈" },    // 60역
