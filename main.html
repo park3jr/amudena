@@ -219,7 +219,7 @@
         <span class="tab-icon">📍</span>
         <span>방문기록</span>
     </button>
-    <button class="tab bottom-tab" onclick="changeTab('gallery', this)">
+    <button class="tab bottom-tab" style="display:none;" onclick="changeTab('gallery', this)">
         <span class="tab-icon">🖼️</span>
         <span>사진첩</span>
     </button>
@@ -951,7 +951,7 @@ function loadHistory(){
                 </button>
             `}
             ${item.stamped ? `
-                <button class="photo-btn" onclick="openPhotoPicker(${idx})">
+                <button class="photo-btn" onclick="openPhotoPicker(${idx})" style="display:none;">
                     📷 사진 추가
                 </button>
 
