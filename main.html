@@ -29,8 +29,8 @@
                 <div class="exp-row" id="headerCount"></div>
             </div>
         </div>
-
-        <div id="userInfo" class="user-info" style="display:none;">
+                
+        <div id="userInfo" class="user-info" style="display:none;"><button class="help-btn" onclick="openTutorial()" title="도움말">?</button>
             <div id="userName" class="user-name"></div>
             <button id="logoutBtn" class="logout-btn">로그아웃</button>
         </div>
@@ -2272,6 +2272,84 @@ async function deletePhoto(historyIndex, photoIndex){
         }
     );
 }
+
+let tutorialIndex = 0;
+
+const tutorialSteps = [
+    "👋 아무데나에 오신 걸 환영해요!\n\n랜덤으로 지하철역을 뽑아 \n새로운 장소를 찾아가는 앱이에요.",
+    "🎲 지역과 호선을 선택한 뒤\n랜덤 버튼을 누르면 역이 추천돼요.",
+    "⭐ 마음에 드는 역은\n방문기록에 저장할 수 있어요.",
+    "📍 실제 역 근처 150m 이내에서\n방문 완료 인증을 할 수 있어요."
+];
+
+function openTutorial() {
+    tutorialIndex = 0;
+    document.getElementById("tutorialModal").style.display = "flex";
+    renderTutorialStep();
+}
+
+function closeTutorial() {
+    document.getElementById("tutorialModal").style.display = "none";
+}
+
+function renderTutorialStep() {
+
+    document.getElementById("tutorialStepText").innerText =
+        tutorialSteps[tutorialIndex];
+
+    const prevBtn = document.getElementById("tutorialPrevBtn");
+    const nextBtn = document.getElementById("tutorialNextBtn");
+
+    // 첫 페이지
+    if (tutorialIndex === 0) {
+        prevBtn.style.display = "none";
+        nextBtn.innerText = "다음";
+    }
+    // 마지막 페이지
+    else if (tutorialIndex === tutorialSteps.length - 1) {
+        prevBtn.style.display = "block";
+        nextBtn.innerText = "닫기";
+    }
+    // 중간 페이지
+    else {
+        prevBtn.style.display = "block";
+        nextBtn.innerText = "다음";
+    }
+}
+
+function nextTutorialStep() {
+
+    if (tutorialIndex === tutorialSteps.length - 1) {
+        closeTutorial();
+        return;
+    }
+
+    tutorialIndex++;
+    renderTutorialStep();
+}
+
+function prevTutorialStep() {
+    if (tutorialIndex > 0) {
+        tutorialIndex--;
+    } else {
+        tutorialIndex = tutorialSteps.length - 1;
+    }
+
+    renderTutorialStep();
+}
 </script>
+<div id="tutorialModal" class="tutorial-modal" style="display:none;">
+    <div class="tutorial-box">
+        <button class="tutorial-close" onclick="closeTutorial()">×</button>
+
+        <div class="tutorial-title">아무데나 사용법</div>
+        <div class="tutorial-step" id="tutorialStepText"></div>
+
+        <div class="tutorial-actions">
+            <button id="tutorialPrevBtn" onclick="prevTutorialStep()">이전</button>
+            <button id="tutorialNextBtn" onclick="nextTutorialStep()">다음</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>

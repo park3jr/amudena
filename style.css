@@ -911,9 +911,9 @@ select{
 }
 
 #headerTitle{
-    font-size:22px;
-    font-weight:900;
-    color:#15803d;
+    font-size:11px;
+    font-weight:400;
+    color:#bdffd5;
 }
 
 #headerCount{
@@ -1021,9 +1021,9 @@ select{
 }
 
 #headerTitle{
-    font-size:22px;
+    font-size:15px;
     font-weight:900;
-    color:#15803d !important;
+    color:#409dc9 !important;
 }
 
 #headerMedal{
@@ -1110,4 +1110,76 @@ select{
     font-size:16px;
     cursor:pointer;
     z-index:10;
+}
+
+.help-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: #111;
+    color: white;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.tutorial-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.tutorial-box {
+    position: relative;
+    width: 100%;
+    max-width: 360px;
+    background: white;
+    border-radius: 22px;
+    padding: 24px;
+    text-align: center;
+}
+
+.tutorial-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    border: none;
+    background: transparent;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.tutorial-title {
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 16px;
+}
+
+.tutorial-step {
+    font-size: 15px;
+    line-height: 1.6;
+    white-space: pre-line;
+    margin-bottom: 20px;
+}
+
+.tutorial-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.tutorial-actions button {
+    flex: 1;
+    border: none;
+    border-radius: 14px;
+    padding: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    background: #111;
+    color: white;
 }

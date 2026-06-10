@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Entra 권한 조회</title>
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f5f6f8;
+}
+
+.header {
+  padding: 16px 24px;
+  background: #1f2937;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.search-area {
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  gap: 8px;
+}
+
+.search-area input {
+  width: 320px;
+  padding: 10px;
+}
+
+.search-area button {
+  padding: 10px 16px;
+  border: 0;
+  background: #2563eb;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.grid-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  padding: 20px;
+}
+
+.panel {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  overflow: hidden;
+}
+
+.panel-title {
+  padding: 12px 16px;
+  font-weight: bold;
+  background: #f1f5f9;
+  border-bottom: 1px solid #ddd;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+th {
+  background: #fafafa;
+}
+
+tr {
+  cursor: pointer;
+}
+
+tr:hover {
+  background: #eff6ff;
+}
+
+tr.selected {
+  background: #dbeafe;
+}
+
+.empty {
+  padding: 30px;
+  color: #888;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="header">Entra 권한 조회 화면</div>
+
+<div class="search-area">
+  <input id="searchInput" placeholder="사용자명 또는 이메일 검색">
+  <button onclick="searchUsers()">조회</button>
+</div>
+
+<div class="grid-wrap">
+
+  <!-- 1. 유저 그리드 -->
+  <div class="panel">
+    <div class="panel-title">유저</div>
+    <table>
+      <thead>
+        <tr>
+          <th>이름</th>
+          <th>이메일</th>
+        </tr>
+      </thead>
+      <tbody id="userGrid"></tbody>
+    </table>
+  </div>
+
+  <!-- 2. 가지고 있는 권한 -->
+  <div class="panel">
+    <div class="panel-title">가지고 있는 권한</div>
+    <table>
+      <thead>
+        <tr>
+          <th>권한명</th>
+          <th>유형</th>
+        </tr>
+      </thead>
+      <tbody id="permissionGrid"></tbody>
+    </table>
+  </div>
+
+  <!-- 3. 권한의 하위 구성원 -->
+  <div class="panel">
+    <div class="panel-title">권한의 하위 구성원</div>
+    <table>
+      <thead>
+        <tr>
+          <th>구성원명</th>
+          <th>유형</th>
+        </tr>
+      </thead>
+      <tbody id="memberGrid"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const users = [
+  {
+    id: "u1",
+    name: "홍길동",
+    email: "hong@test.com",
+    permissions: [
+      {
+        id: "g1",
+        name: "[Role][AIMSP][DEV]기본 권한",
+        type: "Group",
+        members: [
+          { name: "[RoleItem][AIMSP]IC_I0065", type: "Group" },
+          { name: "[RoleItem][AIMSP]IC_I0070", type: "Group" }
+        ]
+      },
+      {
+        id: "g2",
+        name: "[Role][AIMSP][STG]기본 권한",
+        type: "Group",
+        members: [
+          { name: "[RoleItem][AIMSP]STG_MENU_001", type: "Group" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "u2",
+    name: "김철수",
+    email: "kim@test.com",
+    permissions: [
+      {
+        id: "g3",
+        name: "[Role][AIMSP][PROD]기본 권한",
+        type: "Group",
+        members: [
+          { name: "[RoleItem][AIMSP]PROD_ADMIN", type: "Group" },
+          { name: "직접 사용자 A", type: "User" }
+        ]
+      }
+    ]
+  }
+];
+
+let selectedUserId = null;
+let selectedPermissionId = null;
+
+function searchUsers() {
+  const keyword = document.getElementById("searchInput").value.toLowerCase();
+
+  const filtered = users.filter(user =>
+    user.name.toLowerCase().includes(keyword) ||
+    user.email.toLowerCase().includes(keyword)
+  );
+
+  renderUsers(filtered);
+  clearPermissions();
+  clearMembers();
+}
+
+function renderUsers(list) {
+  const tbody = document.getElementById("userGrid");
+  tbody.innerHTML = "";
+
+  list.forEach(user => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${user.name}</td>
+      <td>${user.email}</td>
+    `;
+
+    tr.onclick = () => {
+      selectedUserId = user.id;
+      selectedPermissionId = null;
+
+      document.querySelectorAll("#userGrid tr").forEach(row => row.classList.remove("selected"));
+      tr.classList.add("selected");
+
+      renderPermissions(user.permissions);
+      clearMembers();
+    };
+
+    tbody.appendChild(tr);
+  });
+}
+
+function renderPermissions(permissions) {
+  const tbody = document.getElementById("permissionGrid");
+  tbody.innerHTML = "";
+
+  permissions.forEach(permission => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${permission.name}</td>
+      <td>${permission.type}</td>
+    `;
+
+    tr.onclick = () => {
+      selectedPermissionId = permission.id;
+
+      document.querySelectorAll("#permissionGrid tr").forEach(row => row.classList.remove("selected"));
+      tr.classList.add("selected");
+
+      renderMembers(permission.members);
+    };
+
+    tbody.appendChild(tr);
+  });
+}
+
+function renderMembers(members) {
+  const tbody = document.getElementById("memberGrid");
+  tbody.innerHTML = "";
+
+  members.forEach(member => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${member.name}</td>
+      <td>${member.type}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function clearPermissions() {
+  document.getElementById("permissionGrid").innerHTML = "";
+}
+
+function clearMembers() {
+  document.getElementById("memberGrid").innerHTML = "";
+}
+
+renderUsers(users);
+</script>
+
+</body>
+</html>
