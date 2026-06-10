@@ -200,7 +200,12 @@
                 </div>
             </div>
         </div> -->
-
+        <button id="testCompleteAllBtn"
+                class="button"
+                onclick="completeAllStationsForTest()"
+                style="display:none;">
+            🧪 테스트용 전체 방문 등록
+        </button>
         <button class="button" onclick="showVisitedMap()">
             🗺️ 방문지도 보기
         </button>
@@ -347,7 +352,9 @@ async function saveUserDataToCloud(){
             continue;
         }
 
-        const historyId = item.station.replace(/[\/.#$\[\]]/g, "_");
+        const historyId = `${item.region}_${item.line}_${item.station}`
+        .replace(/[\/.#$\[\]]/g, "_")
+        .replace(/\s+/g, "_");
 
         await setDoc(
             doc(db, "users", currentUser.uid, "histories", historyId),
@@ -424,6 +431,7 @@ onAuthStateChanged(auth, async function(user){
         userName.innerText = user.displayName + "님";
 
         await loadUserDataFromCloud();
+        showTestButtons();
     }else{
         currentUser = null;
         window.currentUserEmail = "";
@@ -474,13 +482,15 @@ async function deleteVisitPhotoFromStorage(path){
 
 window.deleteVisitPhotoFromStorage = deleteVisitPhotoFromStorage;
 
-async function deleteUserHistoryFromCloud(stationName){
+async function deleteUserHistoryFromCloud(item){
 
-    if(!currentUser || !stationName){
+    if(!currentUser || !item){
         return;
     }
 
-    const historyId = stationName.replace(/[\/.#$\[\]]/g, "_");
+    const historyId = `${item.region}_${item.line}_${item.station}`
+        .replace(/[\/.#$\[\]]/g, "_")
+        .replace(/\s+/g, "_");
 
     await deleteDoc(
         doc(db, "users", currentUser.uid, "histories", historyId)
@@ -817,7 +827,47 @@ function drawStation(){
 
     showMap(stationName + "역");
 }
+function findTransferStations(regionName, stationName){
 
+    const result = [];
+
+    if(!subwayData || !subwayData.regions){
+        return result;
+    }
+
+    Object.keys(subwayData.regions).forEach(function(regionKey){
+
+        const regionData = subwayData.regions[regionKey];
+
+        if(regionData.name !== regionName){
+            return;
+        }
+
+        regionData.lines.forEach(function(line){
+
+            line.stations.forEach(function(name, index){
+
+                if(name === stationName){
+                    result.push({
+                        region: regionData.name,
+                        line: line.name,
+                        order: (index + 1) + "번째",
+                        station: name
+                    });
+                }
+
+            });
+
+        });
+
+    });
+
+    return result;
+}
+
+function getHistoryKey(item){
+    return `${item.region}|${item.line}|${item.station}`;
+}
 /*
     현재 뽑힌 목적지를 방문기록에 저장한다.
     아직 스탬프를 찍지 않은 기록이 있으면 새 기록 저장을 막는다.
@@ -855,22 +905,50 @@ function saveHistory(){
         return;
     }
 
-    const exists = history.some(item =>
-        item && item.station === currentResult.station
+    const historyKeySet = new Set(
+        history
+            .filter(item => item && item.region && item.line && item.station)
+            .map(item => getHistoryKey(item))
     );
 
-    if(exists){
+    const transferStations = findTransferStations(
+        currentResult.region,
+        currentResult.station
+    );
+
+    const now = new Date().toLocaleString();
+
+    const saveItems = [];
+
+    transferStations.forEach(function(stationInfo){
+
+        const newItem = {
+            ...currentResult,
+            region: stationInfo.region,
+            line: stationInfo.line,
+            order: stationInfo.order,
+            station: stationInfo.station,
+            date: now,
+            stamped: false,
+            stampedDate: null
+        };
+
+        const key = getHistoryKey(newItem);
+
+        if(historyKeySet.has(key)){
+            return;
+        }
+
+        historyKeySet.add(key);
+        saveItems.push(newItem);
+    });
+
+    if(saveItems.length === 0){
         showToast("이미 저장된 목적지입니다.");
         return;
     }
 
-    const saveItem = {
-        ...currentResult,
-        stamped: false,
-        stampedDate: null
-    };
-
-    history.unshift(saveItem);
+    history.unshift(...saveItems);
 
     localStorage.setItem(
         "amudenaHistory",
@@ -989,7 +1067,7 @@ function deleteHistory(index){
                 history = [];
             }
 
-            const deletedStation = history[index].station;
+            const deletedItem = history[index];
 
             history.splice(index, 1);
 
@@ -999,7 +1077,7 @@ function deleteHistory(index){
             );
 
             if(window.deleteUserHistoryFromCloud){
-                window.deleteUserHistoryFromCloud(deletedStation);
+                window.deleteUserHistoryFromCloud(deletedItem);
             }
             
             if(window.saveUserDataToCloud){
@@ -1166,6 +1244,10 @@ function resetRandomResult(){
 */
 function isSavedStation(stationName){
 
+    if(!currentResult){
+        return false;
+    }
+
     let history = [];
 
     try{
@@ -1175,7 +1257,9 @@ function isSavedStation(stationName){
     }
 
     return history.some(item =>
-        item && item.station === stationName
+        item &&
+        item.region === currentResult.region &&
+        item.station === stationName
     );
 }
 
@@ -1495,9 +1579,22 @@ function renderRegionAchievements(history){
         { key:"광주", icon:"🌸" }
     ];
 
-    const stampedHistory = history.filter(item =>
-        item && item.stamped === true
-    );
+    const stampedMap = new Map();
+
+    history.forEach(function(item){
+
+        if(!item || item.stamped !== true){
+            return;
+        }
+
+        const key = getHistoryKey(item);
+
+        if(!stampedMap.has(key)){
+            stampedMap.set(key, item);
+        }
+    });
+
+    const stampedHistory = Array.from(stampedMap.values());
 
     let html = "";
 
@@ -1553,9 +1650,22 @@ function updateStampSummary(){
         history = [];
     }
 
-    const stampedCount = history.filter(item =>
-        item && item.stamped === true
-    ).length;
+    const stampedMap = new Map();
+
+    history.forEach(function(item){
+
+        if(!item || item.stamped !== true){
+            return;
+        }
+
+        const key = getHistoryKey(item);
+
+        if(!stampedMap.has(key)){
+            stampedMap.set(key, item);
+        }
+    });
+
+    const stampedCount = stampedMap.size;
 
     const totalStationCount = getTotalStationCountAll();
 
@@ -2214,6 +2324,109 @@ function isTestUser(){
 
     return isDistanceFreeTestUser();
 }
+function showTestButtons(){
+
+    const btn = document.getElementById("testCompleteAllBtn");
+
+    if(!btn){
+        return;
+    }
+
+    btn.style.display = isTestUser() ? "block" : "none";
+}
+
+function completeAllStationsForTest(){
+
+    if(!isTestUser()){
+        showToast("테스트 계정만 사용할 수 있습니다.");
+        return;
+    }
+
+    if(!subwayData || !subwayData.regions){
+        showToast("지하철 데이터를 불러오는 중입니다.");
+        return;
+    }
+
+    showConfirm("모든 역을 방문 완료로 등록하시겠습니까?", async function(){
+
+        let history = [];
+
+        try{
+            history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+        }catch(e){
+            history = [];
+        }
+
+        if(!Array.isArray(history)){
+            history = [];
+        }
+
+        const historyKeySet = new Set(
+            history
+                .filter(item => item && item.region && item.line && item.station)
+                .map(item => getHistoryKey(item))
+        );
+
+        const now = new Date().toLocaleString();
+        const newItems = [];
+
+        Object.keys(subwayData.regions).forEach(function(regionKey){
+
+            const regionData = subwayData.regions[regionKey];
+
+            if(!regionData || !Array.isArray(regionData.lines)){
+                return;
+            }
+
+            regionData.lines.forEach(function(line){
+
+                if(!line || !Array.isArray(line.stations)){
+                    return;
+                }
+
+                line.stations.forEach(function(stationName, index){
+
+                    const item = {
+                        region: regionData.name,
+                        line: line.name,
+                        order: (index + 1) + "번째",
+                        station: stationName,
+                        date: now,
+                        lat: null,
+                        lng: null,
+                        stamped: true,
+                        stampedDate: now,
+                        photos: []
+                    };
+
+                    const key = getHistoryKey(item);
+
+                    if(historyKeySet.has(key)){
+                        return;
+                    }
+
+                    historyKeySet.add(key);
+                    newItems.push(item);
+                });
+            });
+        });
+
+        history = newItems.concat(history);
+
+        localStorage.setItem("amudenaHistory", JSON.stringify(history));
+
+        if(window.saveUserDataToCloud){
+            showToast("클라우드에 저장 중입니다. 잠시만 기다려주세요.");
+            await window.saveUserDataToCloud();
+        }
+
+        loadHistory();
+        updateStampSummary();
+        renderGallery();
+
+        showToast("전체 방문 등록 완료: " + newItems.length + "개 추가");
+    });
+}
 
 async function deletePhoto(historyIndex, photoIndex){
 
@@ -2336,6 +2549,55 @@ function prevTutorialStep() {
     }
 
     renderTutorialStep();
+}
+async function removeDuplicateHistory(){
+
+    let history = [];
+
+    try{
+        history = JSON.parse(localStorage.getItem("amudenaHistory")) || [];
+    }catch(e){
+        history = [];
+    }
+
+    const map = new Map();
+
+    history.forEach(function(item){
+
+        if(!item || !item.region || !item.line || !item.station){
+            return;
+        }
+
+        const key = getHistoryKey(item);
+
+        if(!map.has(key)){
+            map.set(key, item);
+        }
+    });
+
+    const cleanHistory = Array.from(map.values());
+
+    // 먼저 클라우드 전체 삭제
+    if(window.clearUserHistoryFromCloud){
+        await window.clearUserHistoryFromCloud();
+    }
+
+    // 그 다음 로컬 정리본 저장
+    localStorage.setItem(
+        "amudenaHistory",
+        JSON.stringify(cleanHistory)
+    );
+
+    // 정리본을 다시 클라우드에 저장
+    if(window.saveUserDataToCloud){
+        await window.saveUserDataToCloud();
+    }
+
+    loadHistory();
+    updateStampSummary();
+    renderGallery();
+
+    showToast("중복 방문기록 정리 완료");
 }
 </script>
 <div id="tutorialModal" class="tutorial-modal" style="display:none;">
